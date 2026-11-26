@@ -19,6 +19,9 @@ const CONTEXTUAL_KEYWORDS = [
   'opaque',
   'declare',
   'interface',
+  'component',
+  'hook',
+  'renders',
   'of',
   'abstract',
   'readonly',
@@ -44,9 +47,9 @@ const CONTEXTUAL_KEYWORDS = [
 // parameter, a label or a key there.
 const TYPE_KEYWORDS = [
   'any', 'mixed', 'empty', 'string', 'number', 'boolean', 'bool', 'bigint',
-  'symbol', 'never', 'unknown', 'keyof', 'infer', 'unique', 'is',
+  'symbol', 'never', 'unknown', 'keyof', 'infer', 'renders', 'unique', 'is',
   'asserts', 'implies', 'readonly', 'writeonly', 'interface', 'component',
-  'typeof', 'void', 'null', 'true', 'false', 'in', 'out',
+  'hook', 'typeof', 'void', 'null', 'true', 'false', 'in', 'out',
 ];
 
 function isConflict(conflict, names) {
@@ -91,7 +94,12 @@ export default grammar(JavaScript, {
     [$.primary_expression, $.ternary_expression],
     [$._postfix_type, $.optional_indexed_access_type],
     [$._postfix_type, $.indexed_access_type],
+    [$.type_operator, $._qualified_id, $._component_type_parameter_body],
+    [$._renders_operator, $._qualified_id, $._component_type_parameter_body],
+    [$._qualified_id, $._component_type_parameter_body],
     [$.field_definition, $._typed_field_definition, $.abstract_property_definition, $._method_modifiers, $.abstract_method_definition],
+    [$.type_operator, $._type_parameter_variance],
+    [$.generic_type_annotation, $.type_parameter],
     [$._qualified_id, $.object_type_indexer],
     [$.unknown_type_annotation, $.tuple_type_labeled_element],
     [$.never_type_annotation, $.tuple_type_labeled_element],
@@ -104,6 +112,7 @@ export default grammar(JavaScript, {
     [$.number_type_annotation, $.tuple_type_labeled_element],
     [$.string_type_annotation, $.tuple_type_labeled_element],
     [$.type_operator, $._qualified_id, $.tuple_type_labeled_element],
+    [$._renders_operator, $._qualified_id, $.tuple_type_labeled_element],
     [$.generic_type_annotation, $._qualified_id, $.tuple_type_labeled_element],
     [$._qualified_id, $.tuple_type_labeled_element],
     [$.null_literal_type_annotation, $.tuple_type_labeled_element],
@@ -111,6 +120,7 @@ export default grammar(JavaScript, {
     [$.true, $.tuple_type_labeled_element],
     [$.void_type_annotation, $.tuple_type_labeled_element],
     [$.type_operator, $._qualified_id, $.function_type_param],
+    [$._renders_operator, $._qualified_id, $.function_type_param],
     [$._qualified_id, $.function_type_param],
     [$.type_predicate, $._predicate_parameter],
     [$._predicate_parameter, $.infer_type_annotation],
@@ -131,6 +141,7 @@ export default grammar(JavaScript, {
     [$.jsx_namespace_name, $.generic_type_annotation],
     [$._anon_function_type, $._anon_function_param],
     [$._predicate_parameter, $.type_operator],
+    [$._renders_operator, $._predicate_parameter],
     [$.arrow_function, $.non_null_expression],
     [$.jsx_opening_element, $.type_parameter],
     [$.primary_expression, $.formal_parameters],
@@ -140,6 +151,8 @@ export default grammar(JavaScript, {
     [$.await_expression, $.as_expression, $.as_const_expression],
     [$._method_modifiers],
     [$.primary_expression, $.arrow_function, $._method_modifiers],
+    [$.arrow_function, $.hook_declaration, $._method_modifiers],
+    [$.arrow_function, $.component_declaration, $._method_modifiers],
     [$.primary_expression, $._method_modifiers],
     [$.arrow_function, $._method_modifiers],
     [$.primary_expression, $.interface_declaration],
@@ -169,11 +182,15 @@ export default grammar(JavaScript, {
       $.type_alias,
       $.opaque_type,
       $.interface_declaration,
+      $.component_declaration,
+      $.hook_declaration,
       $.declare_type_alias,
       $.declare_opaque_type,
       $.declare_interface,
       $.declare_class,
       $.declare_function,
+      $.declare_hook,
+      $.declare_component,
       $.declare_variable,
       $.declare_module,
       $.declare_module_exports,
@@ -289,10 +306,32 @@ export default grammar(JavaScript, {
       $._semicolon_or_signature,
     ),
 
+    declare_hook: $ => seq('declare', $._declare_hook),
+    _declare_hook: $ => seq(
+      'hook',
+      field('id', $.identifier),
+      field('type_annotation', $._declared_hook_type),
+      optional(field('predicate', $._predicate)),
+      $._semicolon_or_signature,
+    ),
+
     // As in Hermes, the signature of a declared function is a type annotation
     // that holds a function type.
     _declared_function_type: $ => alias($._declared_function_type_inner, $.type_annotation),
     _declared_function_type_inner: $ => alias($._function_type_signature, $.function_type_annotation),
+    _declared_hook_type: $ => alias($._declared_hook_type_inner, $.type_annotation),
+    _declared_hook_type_inner: $ => alias($._function_type_signature, $.hook_type_annotation),
+
+    declare_component: $ => seq('declare', $._declare_component),
+    _declare_component: $ => seq(
+      'component',
+      field('id', $.identifier),
+      field('type_parameters', optional($.type_parameter_declaration)),
+      $._component_type_params,
+      optional(field('renders_type', $._declaration_renders_type)),
+      $._semicolon_or_signature,
+    ),
+
     declare_variable: $ => seq('declare', $._declare_variable),
     _declare_variable: $ => seq(
       field('kind', choice('var', 'let', 'const')),
@@ -344,6 +383,8 @@ export default grammar(JavaScript, {
             field('declaration', choice(
               alias($._declare_function, $.declare_function),
               alias($._declare_class, $.declare_class),
+              alias($._declare_component, $.declare_component),
+              alias($._declare_hook, $.declare_hook),
             )),
             seq(field('declaration', $._type), $._type_semicolon),
           ),
@@ -361,6 +402,8 @@ export default grammar(JavaScript, {
     _declare_export_declaration: $ => choice(
       alias($._declare_function, $.declare_function),
       alias($._declare_class, $.declare_class),
+      alias($._declare_component, $.declare_component),
+      alias($._declare_hook, $.declare_hook),
       alias($._declare_variable, $.declare_variable),
       // Hermes reports these as TypeAlias and InterfaceDeclaration.
       $.type_alias,
@@ -398,6 +441,68 @@ export default grammar(JavaScript, {
       field('expression', $.string),
       ')',
     ),
+
+    // Components and hooks
+
+    component_declaration: $ => seq(
+      optional('async'),
+      'component',
+      field('id', $.identifier),
+      field('type_parameters', optional($.type_parameter_declaration)),
+      '(',
+      optional(seq(
+        commaSep1(choice(
+          field('params', $.component_parameter),
+          seq(field('params', $.rest_pattern), optional(field('type_annotation', $.type_annotation))),
+        )),
+        optional(','),
+      )),
+      ')',
+      optional(field('renders_type', $._declaration_renders_type)),
+      choice(
+        field('body', $.statement_block),
+        $._semicolon_or_signature,
+      ),
+    ),
+
+    component_parameter: $ => seq(
+      field('name', choice($.identifier, alias($._reserved_identifier, $.identifier), $.string, alias($._keyword_identifier, $.identifier))),
+      optional(seq('as', field('local', choice($.identifier, alias($._reserved_identifier, $.identifier), $._destructuring_pattern)))),
+      optional('?'),
+      optional(field('type_annotation', $.type_annotation)),
+      optional($._initializer),
+    ),
+
+    hook_declaration: $ => seq(
+      optional('async'),
+      'hook',
+      field('id', $.identifier),
+      field('type_parameters', optional($.type_parameter_declaration)),
+      field('params', $.formal_parameters),
+      optional(field('return_type', $.type_annotation)),
+      field('body', $.statement_block),
+    ),
+
+    _renders_type: $ => alias($._renders_operator, $.type_operator),
+
+    // In component declarations, as in Hermes, `renders A | B` renders the union.
+    _declaration_renders_type: $ => alias($._declaration_renders_operator, $.type_operator),
+    _declaration_renders_operator: $ => prec.right(seq(
+      field('operator', choice(
+        'renders',
+        alias(seq('renders', token.immediate('?')), 'renders?'),
+        alias(seq('renders', token.immediate('*')), 'renders*'),
+      )),
+      field('type_annotation', $._union_type),
+    )),
+    _renders_operator: $ => prec.right(seq(
+      field('operator', choice(
+        'renders',
+        alias(seq('renders', token.immediate('?')), 'renders?'),
+        alias(seq('renders', token.immediate('*')), 'renders*'),
+      )),
+      field('type_annotation', $._prefix_type),
+    )),
 
     // ------------------------------------------------------------------
     // JavaScript statements extended with Flow syntax
@@ -1109,6 +1214,7 @@ export default grammar(JavaScript, {
     )),
 
     type_operator: $ => choice(
+      $._renders_operator,
       prec('type_prefix', seq(
         field('operator', choice('readonly', 'unique')),
         field('type_annotation', $._prefix_type),
@@ -1185,6 +1291,8 @@ export default grammar(JavaScript, {
       $.interface_type_annotation,
       $.tuple_type_annotation,
       $.infer_type_annotation,
+      $.component_type_annotation,
+      $.hook_type_annotation,
       $.function_type_annotation,
       $.import_type,
       $._parenthesized_type,
@@ -1540,6 +1648,14 @@ export default grammar(JavaScript, {
     ),
 
     function_type_param: $ => choice(
+      // `(renders?: T) => R`: as in Hermes, `renders?` is only the maybe
+      // renders operator when the `?` follows directly, as here.
+      seq(
+        field('name', alias('renders', $.identifier)),
+        token.immediate('?'),
+        ':',
+        field('type_annotation', $._type),
+      ),
       seq(
         field('name', choice(
           $._qualified_id,
@@ -1556,6 +1672,53 @@ export default grammar(JavaScript, {
     _this_function_type_param: $ => seq(
       'this',
       ':',
+      field('type_annotation', $._type),
+    ),
+
+    hook_type_annotation: $ => prec.right('type_function', seq(
+      'hook',
+      field('type_parameters', optional($.type_parameter_declaration)),
+      $._function_type_params,
+      '=>',
+      field('return_type', $._return_type_type),
+    )),
+
+    component_type_annotation: $ => prec.right(seq(
+      'component',
+      field('type_parameters', optional($.type_parameter_declaration)),
+      $._component_type_params,
+      optional(field('renders_type', $._renders_type)),
+    )),
+
+    _component_type_params: $ => seq(
+      '(',
+      optional(seq(
+        commaSep1(choice(
+          field('params', $.component_type_parameter),
+          field('rest', alias($._rest_component_type_parameter, $.component_type_parameter)),
+        )),
+        optional(','),
+      )),
+      ')',
+    ),
+
+    _rest_component_type_parameter: $ => seq('...', $._component_type_parameter_body),
+
+    component_type_parameter: $ => $._component_type_parameter_body,
+
+    _component_type_parameter_body: $ => choice(
+      seq(
+        field('name', choice(
+          $._qualified_id,
+          alias($._type_keyword_identifier, $.identifier),
+          $.string,
+        )),
+        optional(seq('as', field('local', choice($.identifier, $._destructuring_pattern)))),
+        optional('?'),
+        ':',
+        field('type_annotation', $._type),
+        optional($._initializer),
+      ),
       field('type_annotation', $._type),
     ),
 

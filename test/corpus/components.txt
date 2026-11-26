@@ -1,0 +1,333 @@
+============================================================
+Component declarations
+============================================================
+
+component Foo() {}
+component Bar(x: number, y?: string = 'y', 'data-id' as dataId: string, ...rest: Props) {
+  return <div />;
+}
+export component Baz<T>(item: T) renders Item {}
+export default component Qux() {}
+
+---
+
+(program
+  (component_declaration
+    id: (identifier)
+    body: (statement_block))
+  (component_declaration
+    id: (identifier)
+    params: (component_parameter
+      name: (identifier)
+      type_annotation: (type_annotation
+        (number_type_annotation)))
+    params: (component_parameter
+      name: (identifier)
+      type_annotation: (type_annotation
+        (string_type_annotation))
+      value: (string
+        (string_fragment)))
+    params: (component_parameter
+      name: (string
+        (string_fragment))
+      local: (identifier)
+      type_annotation: (type_annotation
+        (string_type_annotation)))
+    params: (rest_pattern
+      (identifier))
+    type_annotation: (type_annotation
+      (generic_type_annotation
+        id: (identifier)))
+    body: (statement_block
+      (return_statement
+        (jsx_self_closing_element
+          name: (identifier)))))
+  (export_statement
+    declaration: (component_declaration
+      id: (identifier)
+      type_parameters: (type_parameter_declaration
+        params: (type_parameter
+          name: (identifier)))
+      params: (component_parameter
+        name: (identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      renders_type: (type_operator
+        type_annotation: (generic_type_annotation
+          id: (identifier)))
+      body: (statement_block)))
+  (export_statement
+    declaration: (component_declaration
+      id: (identifier)
+      body: (statement_block))))
+
+============================================================
+Component render types
+============================================================
+
+component A() renders B {}
+component C() renders? D {}
+component E() renders* F {}
+component G() renders H | I {}
+
+---
+
+(program
+  (component_declaration
+    id: (identifier)
+    renders_type: (type_operator
+      type_annotation: (generic_type_annotation
+        id: (identifier)))
+    body: (statement_block))
+  (component_declaration
+    id: (identifier)
+    renders_type: (type_operator
+      type_annotation: (generic_type_annotation
+        id: (identifier)))
+    body: (statement_block))
+  (component_declaration
+    id: (identifier)
+    renders_type: (type_operator
+      type_annotation: (generic_type_annotation
+        id: (identifier)))
+    body: (statement_block))
+  (component_declaration
+    id: (identifier)
+    renders_type: (type_operator
+      type_annotation: (union_type_annotation
+        types: (generic_type_annotation
+          id: (identifier))
+        types: (generic_type_annotation
+          id: (identifier))))
+    body: (statement_block)))
+
+============================================================
+Component parameter forms
+============================================================
+
+component A(x as y: number, 'key' as k: string, ref as r: Ref) {}
+component B(...{a, b}: Props) {}
+
+---
+
+(program
+  (component_declaration
+    id: (identifier)
+    params: (component_parameter
+      name: (identifier)
+      local: (identifier)
+      type_annotation: (type_annotation
+        (number_type_annotation)))
+    params: (component_parameter
+      name: (string
+        (string_fragment))
+      local: (identifier)
+      type_annotation: (type_annotation
+        (string_type_annotation)))
+    params: (component_parameter
+      name: (identifier)
+      local: (identifier)
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier))))
+    body: (statement_block))
+  (component_declaration
+    id: (identifier)
+    params: (rest_pattern
+      (object_pattern
+        (shorthand_property_identifier_pattern)
+        (shorthand_property_identifier_pattern)))
+    type_annotation: (type_annotation
+      (generic_type_annotation
+        id: (identifier)))
+    body: (statement_block)))
+
+============================================================
+Declare components
+============================================================
+
+declare component A(x: number) renders B;
+declare export component C();
+declare export default component D();
+
+---
+
+(program
+  (declare_component
+    id: (identifier)
+    params: (component_type_parameter
+      name: (identifier)
+      type_annotation: (number_type_annotation))
+    renders_type: (type_operator
+      type_annotation: (generic_type_annotation
+        id: (identifier))))
+  (declare_export_declaration
+    declaration: (declare_component
+      id: (identifier)))
+  (declare_export_declaration
+    declaration: (declare_component
+      id: (identifier))))
+
+============================================================
+Hooks
+============================================================
+
+hook useThing(x: number): string {
+  return 'x';
+}
+export hook useOther<T>(x: T): T { return x; }
+declare hook useDeclared(): void;
+declare export hook useExported(x: number): void;
+
+---
+
+(program
+  (hook_declaration
+    id: (identifier)
+    params: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (number_type_annotation)))
+    return_type: (type_annotation
+      (string_type_annotation))
+    body: (statement_block
+      (return_statement
+        (string
+          (string_fragment)))))
+  (export_statement
+    declaration: (hook_declaration
+      id: (identifier)
+      type_parameters: (type_parameter_declaration
+        params: (type_parameter
+          name: (identifier)))
+      params: (formal_parameters
+        (identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      return_type: (type_annotation
+        (generic_type_annotation
+          id: (identifier)))
+      body: (statement_block
+        (return_statement
+          (identifier)))))
+  (declare_hook
+    id: (identifier)
+    type_annotation: (type_annotation
+      (hook_type_annotation
+        return_type: (void_type_annotation))))
+  (declare_export_declaration
+    declaration: (declare_hook
+      id: (identifier)
+      type_annotation: (type_annotation
+        (hook_type_annotation
+          params: (function_type_param
+            name: (identifier)
+            type_annotation: (number_type_annotation))
+          return_type: (void_type_annotation))))))
+
+============================================================
+Render types
+============================================================
+
+type A = renders Foo;
+type B = renders? Foo;
+type C = renders* Foo;
+type D = renders (Foo | Bar);
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (type_operator
+      type_annotation: (generic_type_annotation
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (type_operator
+      type_annotation: (generic_type_annotation
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (type_operator
+      type_annotation: (generic_type_annotation
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (type_operator
+      type_annotation: (union_type_annotation
+        types: (generic_type_annotation
+          id: (identifier))
+        types: (generic_type_annotation
+          id: (identifier))))))
+
+============================================================
+Component types
+============================================================
+
+type A = component(x: number, 'data-id': string, ...Rest);
+type B = component() renders Foo;
+type C = component<T>(...{x: T});
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (component_type_annotation
+      params: (component_type_parameter
+        name: (identifier)
+        type_annotation: (number_type_annotation))
+      params: (component_type_parameter
+        name: (string
+          (string_fragment))
+        type_annotation: (string_type_annotation))
+      rest: (component_type_parameter
+        type_annotation: (generic_type_annotation
+          id: (identifier)))))
+  (type_alias
+    id: (identifier)
+    right: (component_type_annotation
+      renders_type: (type_operator
+        type_annotation: (generic_type_annotation
+          id: (identifier)))))
+  (type_alias
+    id: (identifier)
+    right: (component_type_annotation
+      type_parameters: (type_parameter_declaration
+        params: (type_parameter
+          name: (identifier)))
+      rest: (component_type_parameter
+        type_annotation: (object_type_annotation
+          properties: (object_type_property
+            key: (property_identifier)
+            value: (generic_type_annotation
+              id: (identifier))))))))
+
+============================================================
+Hook types
+============================================================
+
+type A = hook (x: number) => void;
+type B = hook <T>() => T;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (hook_type_annotation
+      params: (function_type_param
+        name: (identifier)
+        type_annotation: (number_type_annotation))
+      return_type: (void_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (hook_type_annotation
+      type_parameters: (type_parameter_declaration
+        params: (type_parameter
+          name: (identifier)))
+      return_type: (generic_type_annotation
+        id: (identifier)))))
