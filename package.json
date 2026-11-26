@@ -38,12 +38,12 @@
     "flow-parser": "0.342.0",
     "hermes-parser": "0.37.0",
     "prebuildify": "^6.0.1",
-    "tree-sitter": "^0.25.0",
+    "tree-sitter": "^0.25.1",
     "tree-sitter-cli": "0.27.2",
     "tree-sitter-javascript": "0.25.0"
   },
   "peerDependencies": {
-    "tree-sitter": "^0.25.0"
+    "tree-sitter": "^0.25.1"
   },
   "peerDependenciesMeta": {
     "tree-sitter": {
@@ -61,6 +61,7 @@
     "suites": "node script/run-suites.mjs",
     "compare": "node script/compare.mjs",
     "mapping-table": "node script/mapping-table.mjs",
-    "test:scripts": "node --test script/convert.test.mjs"
+    "test:scripts": "node --test script/convert.test.mjs",
+    "check-versions": "node script/check-versions.mjs"
   }
 }

@@ -65,6 +65,9 @@ jobs:
           test-node: true
           test-python: true
           test-go: true
+      - name: Check the Python runtime version
+        shell: bash
+        run: python -c "from importlib.metadata import version; v = version('tree-sitter'); print('py-tree-sitter', v); assert v.startswith('0.27.'), v"
       - name: Test the Swift binding
         # With the runner's own Swift, which matches its macOS SDK.
         if: runner.os == 'macOS'

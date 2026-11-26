@@ -47,8 +47,6 @@ zig-out/
 *.zip
 *.jar
 
-# Lockfiles (dependencies are installed fresh in CI)
-package-lock.json
 
 # Local test inputs fetched by script/
 /.cache/
