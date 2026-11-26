@@ -9,7 +9,7 @@ license = "MIT"
 name = "tree-sitter-flow"
 readme = "README.md"
 repository = "https://github.com/VladimirMakaev/tree-sitter-flow"
-homepage = "https://github.com/VladimirMakaev/tree-sitter-flow"
+homepage = "https://github.com/VladimirMakaev/tree-sitter-flow#readme"
 version = "0.1.0"
 
 build = "bindings/rust/build.rs"
