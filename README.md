@@ -69,6 +69,12 @@ element could start. As in Flow's parser and Hermes, it is a JSX element when
 the element can close: the external scanner reads it as one when a matching
 closing tag `</T` follows on the same line.
 
+After an expression, `<` ... `>` followed by an argument list is a call with
+type arguments when the content is a type, as in Flow's parser:
+`c ? f<T>() : d => e` calls `f`. It stays a comparison when the content cannot
+be a type, as in `a < (b, c) > (d)`, `a < -b > (c)` or `a < f(b) > (c)`, or
+when the argument list cannot be one, as in `a < b > (c: T)`.
+
 `await (a)(b)` awaits the call, as in Flow's parser: Flow code is in ES
 modules, where `await` is a keyword. tree-sitter-javascript reads it as a call
 of a function named `await`.
@@ -542,7 +548,7 @@ into `.cache/suites` at their pinned commits on first use.
 
 | Suite | Compared | Matched | Mismatched | Known differences |
 | --- | ---: | ---: | ---: | ---: |
-| corpus | 148 | 148 | 0 | 0 |
+| corpus | 167 | 167 | 0 | 0 |
 | flow-parser | 1024 | 1024 | 0 | 0 |
 | hermes | 126 | 126 | 0 | 0 |
 | babel | 579 | 576 | 0 | 3 |
@@ -573,7 +579,46 @@ types whose check type is in parentheses (`(A) extends B ? C : D`).
 
 For the corpus, `npm run compare` also checks the cases hermes-parser rejects
 (constructs it does not support yet, such as constructor types): flow-parser
-must accept each of them. 26 of the 174 corpus cases are such cases.
+must accept each of them. 26 of the 193 corpus cases are such cases.
+
+### Generated snippets around `<`
+
+[`script/generated.mjs`](script/generated.mjs) (`npm run generated`) builds a
+fixed set of snippets that combine 69 type argument forms, 38 argument lists
+and 40 contexts (statements, conditionals, casts, `as`, class fields, `new`,
+`extends` and `implements`, JSX), plus comparison chains with parenthesized,
+shifted and negated operands and generic arrow functions next to JSX. Every
+pair of forms is covered, plus a fixed-seed sample of 4,000 triples. Of the
+12,453 snippets, flow-parser accepts 12,372. Each of them must parse with no
+`ERROR` or `MISSING` node and read every `<` as flow-parser does: the same
+number of calls with type arguments, comparisons, arrow functions, JSX elements
+and type casts. All 12,372 do.
+
+### JavaScript CST identity
+
+[`script/js-identity.mjs`](script/js-identity.mjs) (`npm run js-identity`)
+checks that plain JavaScript gets exactly tree-sitter-javascript's tree: every
+node, named or anonymous, with the same type, field and byte range. An input is
+plain JavaScript when tree-sitter-javascript 0.25.0 parses it with no `ERROR`
+or `MISSING` node.
+
+| Inputs | Plain JavaScript | Identical | Intentional differences | Other differences |
+| --- | ---: | ---: | ---: | ---: |
+| tree-sitter-javascript corpus | 115 | 115 | 0 | 0 |
+| Files without `@flow` in react, react-native, relay, metro, stylex and prettier's tests | 2097 | 2089 | 8 | 0 |
+| Generated JavaScript snippets | 2135 | 2092 | 43 | 0 |
+
+The intentional differences, each recognized from the two trees:
+
+- **`await (a)(b)`** awaits the call, as in Flow's parser: Flow code is in ES
+  modules, where `await` is a keyword. tree-sitter-javascript calls a function
+  named `await`.
+- **An arrow function's block body ends the expression.** An arrow function
+  cannot be called, indexed or compared directly, so `(`, `[`, a template or
+  `<` on the next line after `=> {}` starts a new statement, as in Flow's
+  parser.
+- **Call type arguments.** `f<T>(x)` and `a < (b) > (c)` are calls with type
+  arguments in Flow, where tree-sitter-javascript compares twice.
 
 ### JavaScript
 
@@ -584,7 +629,7 @@ recovery; tree-sitter-flow recovers with a different tree.
 
 ### Corpus, queries and bindings
 
-`tree-sitter test` runs 174 corpus tests, 19 highlight assertions and 7 tag
+`tree-sitter test` runs 193 corpus tests, 19 highlight assertions and 7 tag
 assertions. `test/corpus/regressions.txt` puts the regression cases of the
 other corpus files into one file, so that they also parse in each other's
 context. CI builds and tests the Node, Rust, Python, Go and C (CMake)
@@ -594,23 +639,23 @@ with the tree-sitter 0.27.2 runtime.
 ### Performance
 
 Parsing the 5755 real-code files of flow-typed, react and react-native
-(33.5 MB) takes 4.28 s with tree-sitter-flow and 17.19 s with
+(33.5 MB) takes 4.15 s with tree-sitter-flow and 17.24 s with
 tree-sitter-javascript, which spends most of its time recovering from Flow
 syntax errors (6.6 s on one file). Parse time is linear: each of the 10 slowest
-files, repeated 8 times, takes 7.7 to 8.2 times as long.
+files, repeated 8 times, takes 7.8 to 8.2 times as long.
 
 | File | Bytes | ms | 8x / 1x |
 | --- | ---: | ---: | ---: |
-| react/packages/react-reconciler/src/ReactFiberHooks.js | 176741 | 31.07 | 7.74 |
-| react/packages/react-server/src/ReactFlightServer.js | 272123 | 29.22 | 7.81 |
-| react-native/packages/react-native/flow/dom.js.flow | 194764 | 27.77 | 7.89 |
-| react-native/flow-typed/npm/babel-types_v7.x.x.js | 241584 | 27.16 | 8.19 |
-| react-native/flow-typed/environment/node.js | 174456 | 27.05 | 8.12 |
-| react/packages/react-devtools-shared/src/backend/fiber/renderer.js | 290563 | 26.95 | 7.86 |
-| react/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js | 244327 | 26.12 | 7.89 |
-| react/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js | 239852 | 24.05 | 7.90 |
-| flow-typed/definitions/npm/sequelize_v4.x.x/flow_v0.104.x-/sequelize_v4.x.x.js | 223888 | 23.86 | 7.66 |
-| react/packages/react-server/src/ReactFizzServer.js | 234497 | 23.41 | 7.71 |
+| react-native/packages/react-native/flow/dom.js.flow | 194764 | 28.65 | 8.12 |
+| react/packages/react-server/src/ReactFlightServer.js | 272123 | 28.44 | 8.04 |
+| react-native/flow-typed/environment/node.js | 174456 | 26.99 | 7.97 |
+| react-native/flow-typed/npm/babel-types_v7.x.x.js | 241584 | 26.86 | 8.22 |
+| react/packages/react-devtools-shared/src/backend/fiber/renderer.js | 290563 | 26.56 | 7.84 |
+| react/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js | 244327 | 24.65 | 7.91 |
+| react/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js | 239852 | 24.37 | 7.90 |
+| react/packages/react-client/src/ReactFlightClient.js | 205375 | 23.23 | 7.83 |
+| react/packages/react-server/src/ReactFizzServer.js | 234497 | 22.12 | 7.97 |
+| react-native/packages/react-native/src/private/webapis/intersectionobserver/__tests__/IntersectionObserver-itest.js | 164221 | 20.74 | 7.88 |
 
 ### Running the tests
 
@@ -620,6 +665,8 @@ tree-sitter test                    # corpus, highlight and tag tests
 npm run suites:fetch                # fetch the public suites
 npm run suites -- --check --perf    # parse rate, naming check, performance
 npm run compare                     # Hermes comparison
+npm run generated                   # generated snippets around `<`
+npm run js-identity                 # plain JavaScript trees vs tree-sitter-javascript
 bash script/js-corpus.sh            # tree-sitter-javascript's corpus
 ```
 
@@ -655,8 +702,11 @@ Fetched by [`script/fetch-suites.sh`](script/fetch-suites.sh), never vendored:
 | Parse rate on public suites | every Flow-accepted file parses clean, naming check, linear parse time |
 | tree-sitter-javascript corpus | no JavaScript regressions |
 | Hermes comparison | `npm run compare` on every suite: no mismatch outside the documented list |
+| JavaScript CST identity | `npm run js-identity`: plain JavaScript gets tree-sitter-javascript's exact tree |
+| Generated snippets | `npm run generated`: every `<` read as flow-parser reads it |
 
-The Hermes comparison job is meant to be a required check for `main`.
+The Hermes comparison and JavaScript CST identity jobs are meant to be
+required checks for `main`.
 
 ## Releasing
 

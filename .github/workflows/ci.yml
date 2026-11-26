@@ -156,6 +156,39 @@ jobs:
         env:
           TREE_SITTER: tree-sitter
 
+  js-identity:
+    name: JavaScript CST identity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - name: Install dependencies and build the Node binding
+        run: npm install
+      - name: Cache suites
+        uses: actions/cache@v6
+        with:
+          path: .cache/suites
+          key: suites-${{hashFiles('script/fetch-suites.sh')}}
+      - name: Fetch suites at pinned commits
+        run: npm run suites:fetch
+      - name: Compare plain JavaScript trees with tree-sitter-javascript
+        run: npm run js-identity
+
+  generated:
+    name: Generated snippets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - name: Install dependencies and build the Node binding
+        run: npm install
+      - name: Parse generated snippets as flow-parser does
+        run: npm run generated
+
   compare:
     name: Hermes comparison
     runs-on: ubuntu-latest

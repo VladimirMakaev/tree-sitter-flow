@@ -60,6 +60,8 @@
     "suites:fetch": "bash script/fetch-suites.sh",
     "suites": "node script/run-suites.mjs",
     "compare": "node script/compare.mjs",
+    "generated": "node script/generated.mjs",
+    "js-identity": "node script/js-identity.mjs",
     "mapping-table": "node script/mapping-table.mjs",
     "test:scripts": "node --test script/convert.test.mjs",
     "check-versions": "node script/check-versions.mjs"
