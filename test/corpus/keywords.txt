@@ -1,0 +1,300 @@
+============================================================
+Contextual keywords as identifiers
+============================================================
+
+const type = 1;
+const opaque = 2;
+const declare = 3;
+const component = 4;
+const hook = 5;
+const renders = 6;
+const as = 7;
+const enum_ = 8;
+const record = 9;
+const of = 10;
+type(x);
+declare(x);
+component(x);
+hook(x);
+renders + as;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      arguments: (arguments
+        (identifier))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      arguments: (arguments
+        (identifier))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      arguments: (arguments
+        (identifier))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      arguments: (arguments
+        (identifier))))
+  (expression_statement
+    (binary_expression
+      left: (identifier)
+      right: (identifier))))
+
+============================================================
+Keywords as property names
+============================================================
+
+a?.default;
+a.type;
+x = {type: 1, interface: 2, declare: 3, default: 4};
+<A default />;
+<B type="x" interface />;
+class C {
+  type = 1;
+  declare() {}
+  static static() {}
+}
+
+---
+
+(program
+  (expression_statement
+    (member_expression
+      object: (identifier)
+      optional_chain: (optional_chain)
+      property: (property_identifier)))
+  (expression_statement
+    (member_expression
+      object: (identifier)
+      property: (property_identifier)))
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (object
+        (pair
+          key: (property_identifier)
+          value: (number))
+        (pair
+          key: (property_identifier)
+          value: (number))
+        (pair
+          key: (property_identifier)
+          value: (number))
+        (pair
+          key: (property_identifier)
+          value: (number)))))
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)
+      attribute: (jsx_attribute
+        (property_identifier))))
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)
+      attribute: (jsx_attribute
+        (property_identifier)
+        (string
+          (string_fragment)))
+      attribute: (jsx_attribute
+        (property_identifier))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (number))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block)))))
+
+============================================================
+Statements without semicolons
+============================================================
+
+type A = number
+const b = 1
+type C = string
+(function () {})()
+opaque type D = number
+[1, 2].forEach(f)
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (number_type_annotation))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (type_alias
+    id: (identifier)
+    right: (string_type_annotation))
+  (expression_statement
+    (call_expression
+      function: (parenthesized_expression
+        (function_expression
+          parameters: (formal_parameters)
+          body: (statement_block)))
+      arguments: (arguments)))
+  (opaque_type
+    id: (identifier)
+    impltype: (number_type_annotation))
+  (expression_statement
+    (call_expression
+      function: (member_expression
+        object: (array
+          (number)
+          (number))
+        property: (property_identifier))
+      arguments: (arguments
+        (identifier)))))
+
+============================================================
+Generic arrows and JSX
+============================================================
+
+const a = <T>(x: T): T => x;
+const b = <T,>(x: T) => x;
+const c = <div>{x}</div>;
+const d = <Foo bar={1}>text &amp; more</Foo>;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (identifier))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        body: (identifier))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (jsx_element
+        open_tag: (jsx_opening_element
+          name: (identifier))
+        (jsx_expression
+          (identifier))
+        close_tag: (jsx_closing_element
+          name: (identifier)))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (jsx_element
+        open_tag: (jsx_opening_element
+          name: (identifier)
+          attribute: (jsx_attribute
+            (property_identifier)
+            (jsx_expression
+              (number))))
+        (jsx_text)
+        (html_character_reference)
+        (jsx_text)
+        close_tag: (jsx_closing_element
+          name: (identifier))))))
+
+============================================================
+Iterator keys
+============================================================
+
+declare class A {
+  @@iterator(): Iterator<number>;
+  @@asyncIterator(): AsyncIterator<number>;
+}
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier)
+            type_parameters: (type_parameter_instantiation
+              params: (number_type_annotation)))))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier)
+            type_parameters: (type_parameter_instantiation
+              params: (number_type_annotation))))))))

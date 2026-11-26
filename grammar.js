@@ -24,6 +24,7 @@ const CONTEXTUAL_KEYWORDS = [
   'match',
   'renders',
   'enum',
+  'record',
   'of',
   'abstract',
   'readonly',
@@ -140,6 +141,8 @@ export default grammar(JavaScript, {
     [$._primary_type, $.qualified_type_identifier],
     [$.sequence_expression, $.match_expression_case],
     [$.match_expression, $.match_statement],
+    [$.record_declaration_static_property, $._method_modifiers],
+    [$._property_name, $.record_declaration_property],
     [$.type_operator, $.variance],
     [$.generic_type_annotation, $._qualified_id],
     [$._parenthesized_type, $.function_type_param],
@@ -166,6 +169,7 @@ export default grammar(JavaScript, {
     [$.arrow_function, $._method_modifiers],
     [$.primary_expression, $.match_expression, $.match_statement],
     [$.primary_expression, $.interface_declaration],
+    [$.primary_expression, $.record_expression],
     [$.primary_expression, $.type_alias],
   ]),
 
@@ -196,6 +200,7 @@ export default grammar(JavaScript, {
       $.enum_declaration,
       $.component_declaration,
       $.hook_declaration,
+      $.record_declaration,
       $.declare_type_alias,
       $.declare_opaque_type,
       $.declare_interface,
@@ -589,6 +594,63 @@ export default grammar(JavaScript, {
       )),
       field('type_annotation', $._prefix_type),
     )),
+
+    // Records
+
+    record_declaration: $ => seq(
+      'record',
+      field('id', $.identifier),
+      field('type_parameters', optional($.type_parameter_declaration)),
+      optional(seq('implements', commaSep1(field('implements', $.record_declaration_implements)))),
+      optional('='),
+      field('body', $.record_declaration_body),
+    ),
+
+    record_declaration_implements: $ => seq(
+      field('id', $._type_identifier),
+      field('type_arguments', optional($.type_parameter_instantiation)),
+    ),
+
+    record_declaration_body: $ => seq(
+      '{',
+      repeat(choice(
+        seq(field('elements', choice($.record_declaration_property, $.record_declaration_static_property)), choice(',', ';', $._automatic_semicolon)),
+        field('elements', $.method_definition),
+      )),
+      '}',
+    ),
+
+    record_declaration_property: $ => seq(
+      optional(field('variance', $.variance)),
+      field('key', $._object_type_key),
+      optional('?'),
+      field('type_annotation', $.type_annotation),
+      optional(seq('=', field('default_value', $.expression))),
+    ),
+
+    record_declaration_static_property: $ => seq(
+      'static',
+      optional(field('variance', $.variance)),
+      field('key', $._object_type_key),
+      field('type_annotation', $.type_annotation),
+      optional(seq('=', field('value', $.expression))),
+    ),
+
+    record_expression: $ => prec.dynamic(1, seq(
+      field('record_constructor', choice($.identifier, $.member_expression)),
+      field('type_arguments', optional($._call_type_arguments)),
+      field('properties', $.record_expression_properties),
+    )),
+
+    record_expression_properties: $ => seq(
+      '{',
+      commaSep(optional(field('properties', choice(
+        $.pair,
+        $.spread_element,
+        alias(choice($.identifier, $._reserved_identifier), $.shorthand_property_identifier),
+      )))),
+      '}',
+    ),
 
     // Match
 
@@ -1086,6 +1148,7 @@ export default grammar(JavaScript, {
       previous,
       $.type_cast_expression,
       $.non_null_expression,
+      $.record_expression,
     ),
 
     type_cast_expression: $ => prec.dynamic(-3, seq(

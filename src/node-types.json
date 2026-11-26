@@ -100,6 +100,10 @@
         "named": true
       },
       {
+        "type": "record_declaration",
+        "named": true
+      },
+      {
         "type": "type_alias",
         "named": true
       },
@@ -287,6 +291,10 @@
       },
       {
         "type": "parenthesized_expression",
+        "named": true
+      },
+      {
+        "type": "record_expression",
         "named": true
       },
       {
@@ -12850,6 +12858,282 @@
           },
           {
             "type": "qualified_typeof_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "record_declaration",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "record_declaration_body",
+            "named": true
+          }
+        ]
+      },
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "implements": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "record_declaration_implements",
+            "named": true
+          }
+        ]
+      },
+      "type_parameters": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_parameter_declaration",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "record_declaration_body",
+    "named": true,
+    "fields": {
+      "elements": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "method_definition",
+            "named": true
+          },
+          {
+            "type": "record_declaration_property",
+            "named": true
+          },
+          {
+            "type": "record_declaration_static_property",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "record_declaration_implements",
+    "named": true,
+    "fields": {
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type_arguments": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_parameter_instantiation",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "record_declaration_property",
+    "named": true,
+    "fields": {
+      "default_value": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      },
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "private_property_identifier",
+            "named": true
+          },
+          {
+            "type": "property_identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "type_annotation": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_annotation",
+            "named": true
+          }
+        ]
+      },
+      "variance": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "variance",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "record_declaration_static_property",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "private_property_identifier",
+            "named": true
+          },
+          {
+            "type": "property_identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "type_annotation": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_annotation",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      },
+      "variance": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "variance",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "record_expression",
+    "named": true,
+    "fields": {
+      "properties": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "record_expression_properties",
+            "named": true
+          }
+        ]
+      },
+      "record_constructor": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "member_expression",
+            "named": true
+          }
+        ]
+      },
+      "type_arguments": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_parameter_instantiation",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "record_expression_properties",
+    "named": true,
+    "fields": {
+      "properties": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "pair",
+            "named": true
+          },
+          {
+            "type": "shorthand_property_identifier",
+            "named": true
+          },
+          {
+            "type": "spread_element",
             "named": true
           }
         ]

@@ -1,0 +1,117 @@
+============================================================
+Record declarations
+============================================================
+
+record Point {
+  x: number,
+  y: number = 0,
+  static origin: Point = Point {x: 0, y: 0},
+}
+export record Box<T> implements Container<T> {
+  value: T,
+  get(): T { return this.value; }
+}
+
+---
+
+(program
+  (record_declaration
+    id: (identifier)
+    body: (record_declaration_body
+      elements: (record_declaration_property
+        key: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation)))
+      elements: (record_declaration_property
+        key: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation))
+        default_value: (number))
+      elements: (record_declaration_static_property
+        key: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        value: (record_expression
+          record_constructor: (identifier)
+          properties: (record_expression_properties
+            properties: (pair
+              key: (property_identifier)
+              value: (number))
+            properties: (pair
+              key: (property_identifier)
+              value: (number)))))))
+  (export_statement
+    declaration: (record_declaration
+      id: (identifier)
+      type_parameters: (type_parameter_declaration
+        params: (type_parameter
+          name: (identifier)))
+      implements: (record_declaration_implements
+        id: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (generic_type_annotation
+            id: (identifier))))
+      body: (record_declaration_body
+        elements: (record_declaration_property
+          key: (property_identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        elements: (method_definition
+          name: (property_identifier)
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (statement_block
+            (return_statement
+              (member_expression
+                object: (this)
+                property: (property_identifier)))))))))
+
+============================================================
+Record expressions
+============================================================
+
+const p = Point {x: 1, y: 2};
+const q = Box<number> {value: 1};
+const r = Point {...p, x: 3};
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (record_expression
+        record_constructor: (identifier)
+        properties: (record_expression_properties
+          properties: (pair
+            key: (property_identifier)
+            value: (number))
+          properties: (pair
+            key: (property_identifier)
+            value: (number))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (record_expression
+        record_constructor: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (number_type_annotation))
+        properties: (record_expression_properties
+          properties: (pair
+            key: (property_identifier)
+            value: (number))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (record_expression
+        record_constructor: (identifier)
+        properties: (record_expression_properties
+          properties: (spread_element
+            (identifier))
+          properties: (pair
+            key: (property_identifier)
+            value: (number)))))))
