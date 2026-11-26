@@ -1,0 +1,36 @@
+// @flow
+
+type Props = {+name: ?string, count: number};
+// <- keyword
+//   ^ type.definition
+//             ^ property
+//                   ^ operator
+//                    ^ type.builtin
+
+opaque type Id: string = string;
+// <- keyword
+//     ^ keyword
+//          ^ type.definition
+
+function greet<T>(x: T, props: Props): T {
+//             ^ type
+//                             ^ type
+  return x;
+}
+
+component Greeting(name: string) renders Node {
+// <- keyword
+//        ^ function
+//                               ^ keyword
+//                                       ^ type
+  return name;
+}
+
+hook useThing(): void {}
+// <- keyword
+//   ^ function
+
+enum Status {Active, Off}
+// <- keyword
+//   ^ type.definition
+//           ^ constant

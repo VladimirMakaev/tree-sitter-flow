@@ -1,0 +1,20 @@
+type Props = {name: string};
+//   ^ definition.type
+
+interface Shape {}
+//        ^ definition.interface
+
+component Greeting(name: string) {}
+//        ^ definition.function
+
+hook useThing(): void {}
+//   ^ definition.function
+
+enum Status {Active}
+//   ^ definition.enum
+
+declare class Box {}
+//            ^ definition.class
+
+const x: Props = {name: 'x'};
+//       ^ reference.type
