@@ -1,0 +1,285 @@
+================================================================================
+Block followed by a line comment
+:cst
+================================================================================
+
+if (a) { b(); } // c
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:15     if_statement
+1:0  - 1:2        "if"
+1:3  - 1:6        condition: parenthesized_expression
+1:3  - 1:4          "("
+1:4  - 1:5          identifier `a`
+1:5  - 1:6          ")"
+1:7  - 1:15       consequence: statement_block
+1:7  - 1:8          "{"
+1:9  - 1:13         expression_statement
+1:9  - 1:12           call_expression
+1:9  - 1:10             function: identifier `b`
+1:10 - 1:12             arguments: arguments
+1:10 - 1:11               "("
+1:11 - 1:12               ")"
+1:12 - 1:13           ";"
+1:14 - 1:15         "}"
+1:16 - 1:20     comment `// c`
+
+================================================================================
+Statement block followed by a line comment
+:cst
+================================================================================
+
+{ a(); } // c
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:8      statement_block
+1:0  - 1:1        "{"
+1:2  - 1:6        expression_statement
+1:2  - 1:5          call_expression
+1:2  - 1:3            function: identifier `a`
+1:3  - 1:5            arguments: arguments
+1:3  - 1:4              "("
+1:4  - 1:5              ")"
+1:5  - 1:6          ";"
+1:7  - 1:8        "}"
+1:9  - 1:13     comment `// c`
+
+================================================================================
+Loop body followed by a block comment
+:cst
+================================================================================
+
+while (a) {} /* c */
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:12     while_statement
+1:0  - 1:5        "while"
+1:6  - 1:9        condition: parenthesized_expression
+1:6  - 1:7          "("
+1:7  - 1:8          identifier `a`
+1:8  - 1:9          ")"
+1:10 - 1:12       body: statement_block
+1:10 - 1:11         "{"
+1:11 - 1:12         "}"
+1:13 - 1:20     comment `/* c */`
+
+================================================================================
+Try statement in an arrow function body
+:cst
+================================================================================
+
+const f = () => { try { return a; } catch (e) { return b; } };
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:62     lexical_declaration
+1:0  - 1:5        "const"
+1:6  - 1:61       variable_declarator
+1:6  - 1:7          name: identifier `f`
+1:8  - 1:9          "="
+1:10 - 1:61         value: arrow_function
+1:10 - 1:12           parameters: formal_parameters
+1:10 - 1:11             "("
+1:11 - 1:12             ")"
+1:13 - 1:15           "=>"
+1:16 - 1:61           body: statement_block
+1:16 - 1:17             "{"
+1:18 - 1:59             try_statement
+1:18 - 1:21               "try"
+1:22 - 1:35               body: statement_block
+1:22 - 1:23                 "{"
+1:24 - 1:33                 return_statement
+1:24 - 1:30                   "return"
+1:31 - 1:32                   identifier `a`
+1:32 - 1:33                   ";"
+1:34 - 1:35                 "}"
+1:36 - 1:59               handler: catch_clause
+1:36 - 1:41                 "catch"
+1:42 - 1:43                 "("
+1:43 - 1:44                 parameter: identifier `e`
+1:44 - 1:45                 ")"
+1:46 - 1:59                 body: statement_block
+1:46 - 1:47                   "{"
+1:48 - 1:57                   return_statement
+1:48 - 1:54                     "return"
+1:55 - 1:56                     identifier `b`
+1:56 - 1:57                     ";"
+1:58 - 1:59                   "}"
+1:60 - 1:61             "}"
+1:61 - 1:62       ";"
+
+================================================================================
+Return followed by spaces and a line break
+:cst
+================================================================================
+
+function f() {
+  return  
+  a;
+}
+
+--------------------------------------------------------------------------------
+
+1:0  - 5:0    program
+1:0  - 4:1      function_declaration
+1:0  - 1:8        "function"
+1:9  - 1:10       name: identifier `f`
+1:10 - 1:12       parameters: formal_parameters
+1:10 - 1:11         "("
+1:11 - 1:12         ")"
+1:13 - 4:1        body: statement_block
+1:13 - 1:14         "{"
+2:2  - 2:8          return_statement
+2:2  - 2:8            "return"
+3:2  - 3:4          expression_statement
+3:2  - 3:3            identifier `a`
+3:3  - 3:4            ";"
+4:0  - 4:1          "}"
+
+================================================================================
+Keyword leaves
+:cst
+================================================================================
+
+f(undefined, null, this, true, false, a?.b);
+class A extends B { m() { super.a(); } }
+
+--------------------------------------------------------------------------------
+
+1:0  - 3:0    program
+1:0  - 1:44     expression_statement
+1:0  - 1:43       call_expression
+1:0  - 1:1          function: identifier `f`
+1:1  - 1:43         arguments: arguments
+1:1  - 1:2            "("
+1:2  - 1:11           undefined `undefined`
+1:11 - 1:12           ","
+1:13 - 1:17           null `null`
+1:17 - 1:18           ","
+1:19 - 1:23           this `this`
+1:23 - 1:24           ","
+1:25 - 1:29           true `true`
+1:29 - 1:30           ","
+1:31 - 1:36           false `false`
+1:36 - 1:37           ","
+1:38 - 1:42           member_expression
+1:38 - 1:39             object: identifier `a`
+1:39 - 1:41             optional_chain: optional_chain `?.`
+1:41 - 1:42             property: property_identifier `b`
+1:42 - 1:43           ")"
+1:43 - 1:44       ";"
+2:0  - 2:40     class_declaration
+2:0  - 2:5        "class"
+2:6  - 2:7        name: identifier `A`
+2:8  - 2:17       class_heritage
+2:8  - 2:15         "extends"
+2:16 - 2:17         identifier `B`
+2:18 - 2:40       body: class_body
+2:18 - 2:19         "{"
+2:20 - 2:38         member: method_definition
+2:20 - 2:21           name: property_identifier `m`
+2:21 - 2:23           parameters: formal_parameters
+2:21 - 2:22             "("
+2:22 - 2:23             ")"
+2:24 - 2:38           body: statement_block
+2:24 - 2:25             "{"
+2:26 - 2:36             expression_statement
+2:26 - 2:35               call_expression
+2:26 - 2:33                 function: member_expression
+2:26 - 2:31                   object: super `super`
+2:31 - 2:32                   "."
+2:32 - 2:33                   property: property_identifier `a`
+2:33 - 2:35                 arguments: arguments
+2:33 - 2:34                   "("
+2:34 - 2:35                   ")"
+2:35 - 2:36               ";"
+2:37 - 2:38             "}"
+2:39 - 2:40         "}"
+
+================================================================================
+Keyword leaves in types
+:cst
+================================================================================
+
+type A = null | void | this | true;
+opaque type B super C = D;
+type E = F?.[G];
+
+--------------------------------------------------------------------------------
+
+1:0  - 4:0    program
+1:0  - 1:35     type_alias
+1:0  - 1:4        "type"
+1:5  - 1:6        id: identifier `A`
+1:7  - 1:8        "="
+1:9  - 1:34       right: union_type_annotation
+1:9  - 1:13         types: null_literal_type_annotation `null`
+1:14 - 1:15         "|"
+1:16 - 1:20         types: void_type_annotation
+1:16 - 1:20           "void"
+1:21 - 1:22         "|"
+1:23 - 1:27         types: this_type_annotation `this`
+1:28 - 1:29         "|"
+1:30 - 1:34         types: boolean_literal_type_annotation
+1:30 - 1:34           true `true`
+1:34 - 1:35       ";"
+2:0  - 2:26     opaque_type
+2:0  - 2:6        "opaque"
+2:7  - 2:11       "type"
+2:12 - 2:13       id: identifier `B`
+2:14 - 2:19       "super"
+2:20 - 2:21       lower_bound: generic_type_annotation
+2:20 - 2:21         id: identifier `C`
+2:22 - 2:23       "="
+2:24 - 2:25       impltype: generic_type_annotation
+2:24 - 2:25         id: identifier `D`
+2:25 - 2:26       ";"
+3:0  - 3:16     type_alias
+3:0  - 3:4        "type"
+3:5  - 3:6        id: identifier `E`
+3:7  - 3:8        "="
+3:9  - 3:15       right: optional_indexed_access_type
+3:9  - 3:10         object_type: generic_type_annotation
+3:9  - 3:10           id: identifier `F`
+3:10 - 3:12         "?."
+3:12 - 3:13         "["
+3:13 - 3:14         index_type: generic_type_annotation
+3:13 - 3:14           id: identifier `G`
+3:14 - 3:15         "]"
+3:15 - 3:16       ";"
+
+================================================================================
+Arrow function with an expression body continued on the next line
+:cst
+================================================================================
+
+x = a => a
+(b => b);
+
+--------------------------------------------------------------------------------
+
+1:0  - 3:0    program
+1:0  - 2:9      expression_statement
+1:0  - 2:8        assignment_expression
+1:0  - 1:1          left: identifier `x`
+1:2  - 1:3          "="
+1:4  - 2:8          right: arrow_function
+1:4  - 1:5            parameter: identifier `a`
+1:6  - 1:8            "=>"
+1:9  - 2:8            body: call_expression
+1:9  - 1:10             function: identifier `a`
+2:0  - 2:8              arguments: arguments
+2:0  - 2:1                "("
+2:1  - 2:7                arrow_function
+2:1  - 2:2                  parameter: identifier `b`
+2:3  - 2:5                  "=>"
+2:6  - 2:7                  body: identifier `b`
+2:7  - 2:8                ")"
+2:8  - 2:9        ";"

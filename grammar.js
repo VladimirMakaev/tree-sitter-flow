@@ -57,6 +57,16 @@ const TYPE_KEYWORDS = [
   'hook', 'typeof', 'void', 'null', 'true', 'false', 'in', 'out',
 ];
 
+// JavaScript's leaf nodes for keywords. Where Flow uses one of these words,
+// the grammar refers to the leaf rule, aliased, rather than to the bare
+// string: a second use of the string would turn the leaf into a node with a
+// child token, unlike tree-sitter-javascript's `null` or `this`.
+const JS_KEYWORD_LEAVES = ['null', 'true', 'false', 'this', 'super', 'undefined'];
+
+function keyword($, word) {
+  return JS_KEYWORD_LEAVES.includes(word) ? $[word] : word;
+}
+
 function isConflict(conflict, names) {
   return conflict.length === names.length && conflict.every((rule, i) => rule.name === names[i]);
 }
@@ -87,6 +97,7 @@ export default grammar(JavaScript, {
     $._component_type_parameters_open,
     $._field_name_separator,
     $._arrow_block_end,
+    $._after_await,
   ]),
 
   precedences: ($, previous) => previous.concat([
@@ -111,7 +122,8 @@ export default grammar(JavaScript, {
   // Two of tree-sitter-javascript's conflicts do not arise in this grammar.
   conflicts: ($, previous) => previous.filter(c => !isConflict(c, ['primary_expression', 'method_definition']) &&
     !isConflict(c, ['variable_declarator', '_for_header'])).concat([
-    [$.arrow_function],
+    [$._primary_type, $.tuple_type_labeled_element],
+    [$.boolean_literal_type_annotation, $.tuple_type_labeled_element],
     [$.object_type_mapped_type_property, $.variance],
     [$.import_specifier, $._import_identifier],
     [$._declare_class_bare_property, $.object_type_property, $.object_type_indexer, $.object_type_internal_slot],
@@ -151,9 +163,6 @@ export default grammar(JavaScript, {
     [$._renders_operator, $._qualified_id, $.tuple_type_labeled_element],
     [$.generic_type_annotation, $._qualified_id, $.tuple_type_labeled_element],
     [$._qualified_id, $.tuple_type_labeled_element],
-    [$.null_literal_type_annotation, $.tuple_type_labeled_element],
-    [$.false, $.tuple_type_labeled_element],
-    [$.true, $.tuple_type_labeled_element],
     [$.void_type_annotation, $.tuple_type_labeled_element],
     [$.type_operator, $._qualified_id, $.function_type_param],
     [$._renders_operator, $._qualified_id, $.function_type_param],
@@ -277,7 +286,7 @@ export default grammar(JavaScript, {
       field('id', $._type_identifier),
       field('type_parameters', optional($.type_parameter_declaration)),
       optional(seq(':', field('supertype', $._type))),
-      optional(seq('super', field('lower_bound', $._union_type))),
+      optional(seq(alias($.super, 'super'), field('lower_bound', $._union_type))),
       optional(seq('extends', field('upper_bound', $._type))),
     ),
 
@@ -1166,14 +1175,17 @@ export default grammar(JavaScript, {
       ),
       '=>',
       // A label inside the block has dynamic precedence -1, hence 2.
-      field('body', choice(
-        $.expression,
-        prec.dynamic(2, $.statement_block),
-      )),
-      // Never produced: tells the scanner that an arrow function's body just
-      // ended, so that `(` or `[` on the next line starts a new statement, as
-      // in Flow's parser. An arrow function cannot be called directly.
-      optional($._arrow_block_end),
+      choice(
+        field('body', $.expression),
+        seq(
+          field('body', prec.dynamic(2, $.statement_block)),
+          // Never produced: tells the scanner that an arrow function's block
+          // body just ended, so that `(` or `[` on the next line starts a new
+          // statement, as in Flow's parser. An arrow function cannot be
+          // called directly.
+          optional($._arrow_block_end),
+        ),
+      ),
     ),
 
     // In `a ? (b) : c => (d) : e => f`, Hermes reads the parenthesized
@@ -1192,6 +1204,9 @@ export default grammar(JavaScript, {
     // reads a call of a function named `await` there.
     await_expression: $ => prec.dynamic(1, prec('unary_void', seq(
       'await',
+      // Never produced: tells the scanner that `await` was just read, so
+      // that `a = async () => await b(c)` in a class body stays one field.
+      optional($._after_await),
       $.expression,
     ))),
 
@@ -1306,15 +1321,15 @@ export default grammar(JavaScript, {
 
     // Words that are keywords in JavaScript but may name component
     // parameters, object type keys and similar Flow positions.
-    _type_keyword_identifier: _ => choice(...TYPE_KEYWORDS),
+    _type_keyword_identifier: $ => choice(...TYPE_KEYWORDS.map(w => keyword($, w))),
 
-    _keyword_identifier: _ => choice(
+    _keyword_identifier: $ => choice(...[
       'case', 'function', 'class', 'default', 'new', 'delete', 'void', 'typeof',
       'with', 'in', 'instanceof', 'import', 'export', 'extends', 'super', 'this',
       'null', 'true', 'false', 'if', 'else', 'for', 'while', 'do', 'switch',
       'return', 'throw', 'try', 'catch', 'finally', 'var', 'const', 'break',
       'continue', 'debugger',
-    ),
+    ].map(w => keyword($, w))),
 
     // Reserved words are valid JSX attribute names: `<Route default />`.
     // Contextual keywords name JSX elements too: `<source />`, `<type>`.
@@ -1694,7 +1709,7 @@ export default grammar(JavaScript, {
     optional_indexed_access_type: $ => prec('type_postfix', choice(
       seq(
         field('object_type', $._postfix_type),
-        '?.',
+        alias($.optional_chain, '?.'),
         '[',
         field('index_type', $._type),
         ']',
@@ -1712,7 +1727,7 @@ export default grammar(JavaScript, {
       $.mixed_type_annotation,
       $.empty_type_annotation,
       $.void_type_annotation,
-      $.null_literal_type_annotation,
+      alias($.null, $.null_literal_type_annotation),
       $.number_type_annotation,
       $.big_int_type_annotation,
       $.string_type_annotation,
@@ -1720,9 +1735,9 @@ export default grammar(JavaScript, {
       $.symbol_type_annotation,
       $.never_type_annotation,
       $.unknown_type_annotation,
-      $.undefined_type_annotation,
+      alias($.undefined, $.undefined_type_annotation),
       $.exists_type_annotation,
-      $.this_type_annotation,
+      alias($.this, $.this_type_annotation),
       $.string_literal_type_annotation,
       $.number_literal_type_annotation,
       $.big_int_literal_type_annotation,
@@ -1748,7 +1763,6 @@ export default grammar(JavaScript, {
     mixed_type_annotation: _ => 'mixed',
     empty_type_annotation: _ => 'empty',
     void_type_annotation: _ => 'void',
-    null_literal_type_annotation: _ => 'null',
     number_type_annotation: _ => 'number',
     big_int_type_annotation: _ => 'bigint',
     string_type_annotation: _ => 'string',
@@ -1756,9 +1770,7 @@ export default grammar(JavaScript, {
     symbol_type_annotation: _ => 'symbol',
     never_type_annotation: _ => 'never',
     unknown_type_annotation: _ => 'unknown',
-    undefined_type_annotation: _ => 'undefined',
     exists_type_annotation: _ => '*',
-    this_type_annotation: _ => 'this',
 
     string_literal_type_annotation: $ => $.string,
     number_literal_type_annotation: $ => seq(optional('-'), $.number),
@@ -2155,7 +2167,7 @@ export default grammar(JavaScript, {
 
     // As in Hermes, the `this` parameter has no name node.
     _this_function_type_param: $ => seq(
-      'this',
+      alias($.this, 'this'),
       ':',
       field('type_annotation', $._type),
     ),

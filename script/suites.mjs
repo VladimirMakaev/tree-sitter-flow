@@ -76,7 +76,8 @@ export function corpusInputs() {
   const out = [];
   for (const file of walk(dir, p => p.endsWith('.txt')).sort()) {
     const text = fs.readFileSync(file, 'utf8');
-    const re = /^(={3,})[^\n]*\n([^\n]*)\n\1[^\n]*\n([\s\S]*?)\n-{3,}\n/gm;
+    // A header is a name, then optional attribute lines such as `:cst`.
+    const re = /^(={3,})[^\n]*\n([^\n]*)\n(?::[^\n]*\n)*\1[^\n]*\n([\s\S]*?)\n-{3,}\n/gm;
     for (const m of text.matchAll(re)) {
       out.push({name: `${path.relative(ROOT, file)}: ${m[2].trim()}`, source: m[3]});
     }

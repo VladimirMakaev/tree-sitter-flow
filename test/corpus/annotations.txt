@@ -1603,3 +1603,245 @@ async function f() {
               (identifier))
             arguments: (arguments
               (identifier))))))))
+
+================================================================================
+Component type as a call type argument
+================================================================================
+
+// @flow
+f<component(a: string)>();
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (component_type_annotation
+          params: (component_type_parameter
+            name: (identifier)
+            type_annotation: (string_type_annotation))))
+      arguments: (arguments))))
+
+================================================================================
+Component type with a rest parameter as a call type argument
+================================================================================
+
+// @flow
+const A = f<component(...b: C)>();
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (call_expression
+        function: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (component_type_annotation
+            rest: (component_type_parameter
+              name: (identifier)
+              type_annotation: (generic_type_annotation
+                id: (identifier)))))
+        arguments: (arguments)))))
+
+================================================================================
+Cast of a call with type arguments to a function type
+================================================================================
+
+// @flow
+const a = (f<B>(): () => void);
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (type_cast_expression
+        expression: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation
+            params: (generic_type_annotation
+              id: (identifier)))
+          arguments: (arguments))
+        type_annotation: (type_annotation
+          (function_type_annotation
+            return_type: (void_type_annotation)))))))
+
+================================================================================
+Cast of a call with void type arguments to a function type
+================================================================================
+
+// @flow
+const a = (f<void>(): () => void);
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (type_cast_expression
+        expression: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation
+            params: (void_type_annotation))
+          arguments: (arguments))
+        type_annotation: (type_annotation
+          (function_type_annotation
+            return_type: (void_type_annotation)))))))
+
+================================================================================
+Regular expression with a colon in the arguments of a call with type arguments
+================================================================================
+
+// @flow
+f<T>(/:/, c,);
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))
+      arguments: (arguments
+        (regex
+          pattern: (regex_pattern))
+        (identifier)))))
+
+================================================================================
+Called regular expression in the arguments of a call with type arguments
+================================================================================
+
+// @flow
+f<T>(/a:/(c),);
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))
+      arguments: (arguments
+        (call_expression
+          function: (regex
+            pattern: (regex_pattern))
+          arguments: (arguments
+            (identifier)))))))
+
+================================================================================
+Call with type arguments before an arrow function in a conditional
+================================================================================
+
+// @flow
+const a = b ? f<C>() : d => {};
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (ternary_expression
+        condition: (identifier)
+        consequence: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation
+            params: (generic_type_annotation
+              id: (identifier)))
+          arguments: (arguments))
+        alternative: (arrow_function
+          parameter: (identifier)
+          body: (statement_block))))))
+
+================================================================================
+Call with type arguments before a typed arrow function in a conditional
+================================================================================
+
+// @flow
+const a = b ? f<C>() : (d: D) => {};
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (ternary_expression
+        condition: (identifier)
+        consequence: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation
+            params: (generic_type_annotation
+              id: (identifier)))
+          arguments: (arguments))
+        alternative: (arrow_function
+          parameters: (formal_parameters
+            (identifier)
+            type_annotation: (type_annotation
+              (generic_type_annotation
+                id: (identifier))))
+          body: (statement_block))))))
+
+================================================================================
+Comparisons around operands that are not types
+================================================================================
+
+x = a < -b > (c);
+x = a < (b, c) > (d);
+x = a < f(b) > (c);
+
+--------------------------------------------------------------------------------
+
+(program
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (binary_expression
+        left: (binary_expression
+          left: (identifier)
+          right: (unary_expression
+            argument: (identifier)))
+        right: (parenthesized_expression
+          (identifier)))))
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (binary_expression
+        left: (binary_expression
+          left: (identifier)
+          right: (parenthesized_expression
+            (sequence_expression
+              (identifier)
+              (identifier))))
+        right: (parenthesized_expression
+          (identifier)))))
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (binary_expression
+        left: (binary_expression
+          left: (identifier)
+          right: (call_expression
+            function: (identifier)
+            arguments: (arguments
+              (identifier))))
+        right: (parenthesized_expression
+          (identifier))))))

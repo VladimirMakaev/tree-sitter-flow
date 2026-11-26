@@ -5969,11 +5969,6 @@
     }
   },
   {
-    "type": "false",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "field_definition",
     "named": true,
     "fields": {
@@ -7354,11 +7349,6 @@
         ]
       }
     }
-  },
-  {
-    "type": "identifier",
-    "named": true,
-    "fields": {}
   },
   {
     "type": "if_statement",
@@ -9823,16 +9813,6 @@
         ]
       }
     }
-  },
-  {
-    "type": "null",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "null_literal_type_annotation",
-    "named": true,
-    "fields": {}
   },
   {
     "type": "nullable_type_annotation",
@@ -12619,11 +12599,6 @@
     }
   },
   {
-    "type": "optional_chain",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "optional_indexed_access_type",
     "named": true,
     "fields": {
@@ -13970,11 +13945,6 @@
     }
   },
   {
-    "type": "super",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "switch_body",
     "named": true,
     "fields": {},
@@ -14355,16 +14325,6 @@
     }
   },
   {
-    "type": "this",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "this_type_annotation",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "throw_statement",
     "named": true,
     "fields": {},
@@ -14382,11 +14342,6 @@
         }
       ]
     }
-  },
-  {
-    "type": "true",
-    "named": true,
-    "fields": {}
   },
   {
     "type": "try_statement",
@@ -16736,16 +16691,6 @@
     }
   },
   {
-    "type": "undefined",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "undefined_type_annotation",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "union_type_annotation",
     "named": true,
     "fields": {
@@ -17505,7 +17450,7 @@
   },
   {
     "type": "false",
-    "named": false
+    "named": true
   },
   {
     "type": "finally",
@@ -17543,6 +17488,10 @@
     "type": "html_comment",
     "named": true,
     "extra": true
+  },
+  {
+    "type": "identifier",
+    "named": true
   },
   {
     "type": "if",
@@ -17630,7 +17579,11 @@
   },
   {
     "type": "null",
-    "named": false
+    "named": true
+  },
+  {
+    "type": "null_literal_type_annotation",
+    "named": true
   },
   {
     "type": "number",
@@ -17647,6 +17600,10 @@
   {
     "type": "opaque",
     "named": false
+  },
+  {
+    "type": "optional_chain",
+    "named": true
   },
   {
     "type": "out",
@@ -17757,6 +17714,10 @@
     "named": false
   },
   {
+    "type": "super",
+    "named": true
+  },
+  {
     "type": "switch",
     "named": false
   },
@@ -17773,12 +17734,20 @@
     "named": false
   },
   {
+    "type": "this",
+    "named": true
+  },
+  {
+    "type": "this_type_annotation",
+    "named": true
+  },
+  {
     "type": "throw",
     "named": false
   },
   {
     "type": "true",
-    "named": false
+    "named": true
   },
   {
     "type": "try",
@@ -17794,7 +17763,11 @@
   },
   {
     "type": "undefined",
-    "named": false
+    "named": true
+  },
+  {
+    "type": "undefined_type_annotation",
+    "named": true
   },
   {
     "type": "unique",

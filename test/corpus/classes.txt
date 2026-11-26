@@ -364,3 +364,65 @@ class A extends B<> {}
       (identifier)
       super_type_arguments: (type_parameter_instantiation))
     body: (class_body)))
+
+================================================================================
+Empty type arguments in extends and implements
+================================================================================
+
+// @flow
+class A extends B<> implements D<> {
+  f() {
+    (g => {});
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (class_declaration
+    name: (identifier)
+    (class_heritage
+      (identifier)
+      super_type_arguments: (type_parameter_instantiation))
+    implements: (class_implements
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation))
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block
+          (expression_statement
+            (parenthesized_expression
+              (arrow_function
+                parameter: (identifier)
+                body: (statement_block)))))))))
+
+================================================================================
+Class field with an async arrow function that awaits a call
+================================================================================
+
+class A{a=async(e)=>await b(e,c);static async*d(){}}
+
+--------------------------------------------------------------------------------
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (arrow_function
+          parameters: (formal_parameters
+            (identifier))
+          body: (await_expression
+            (call_expression
+              function: (identifier)
+              arguments: (arguments
+                (identifier)
+                (identifier))))))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block)))))

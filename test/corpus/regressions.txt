@@ -138,6 +138,23 @@ abstract class A {
   abstract a: number
   +b: number
 }
+f<component(a: string)>();
+const A = f<component(...b: C)>();
+class A extends B<> implements D<> {
+  f() {
+    (g => {});
+  }
+}
+const a = (f<B>(): () => void);
+const a = (f<void>(): () => void);
+f<T>(/:/, c,);
+f<T>(/a:/(c),);
+const a = b ? f<C>() : d => {};
+const a = b ? f<C>() : (d: D) => {};
+if (a) { b(); } // c
+{ a(); } // c
+while (a) {} /* c */
+const f = () => { try { return a; } catch (e) { return b; } };
 
 ---
 
@@ -1236,4 +1253,157 @@ abstract class A {
         variance: (variance)
         property: (property_identifier)
         type_annotation: (type_annotation
-          (number_type_annotation))))))
+          (number_type_annotation)))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (component_type_annotation
+          params: (component_type_parameter
+            name: (identifier)
+            type_annotation: (string_type_annotation))))
+      arguments: (arguments)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (call_expression
+        function: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (component_type_annotation
+            rest: (component_type_parameter
+              name: (identifier)
+              type_annotation: (generic_type_annotation
+                id: (identifier)))))
+        arguments: (arguments))))
+  (class_declaration
+    name: (identifier)
+    (class_heritage
+      (identifier)
+      super_type_arguments: (type_parameter_instantiation))
+    implements: (class_implements
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation))
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block
+          (expression_statement
+            (parenthesized_expression
+              (arrow_function
+                parameter: (identifier)
+                body: (statement_block))))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (type_cast_expression
+        expression: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation
+            params: (generic_type_annotation
+              id: (identifier)))
+          arguments: (arguments))
+        type_annotation: (type_annotation
+          (function_type_annotation
+            return_type: (void_type_annotation))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (type_cast_expression
+        expression: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation
+            params: (void_type_annotation))
+          arguments: (arguments))
+        type_annotation: (type_annotation
+          (function_type_annotation
+            return_type: (void_type_annotation))))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))
+      arguments: (arguments
+        (regex
+          pattern: (regex_pattern))
+        (identifier))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))
+      arguments: (arguments
+        (call_expression
+          function: (regex
+            pattern: (regex_pattern))
+          arguments: (arguments
+            (identifier))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (ternary_expression
+        condition: (identifier)
+        consequence: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation
+            params: (generic_type_annotation
+              id: (identifier)))
+          arguments: (arguments))
+        alternative: (arrow_function
+          parameter: (identifier)
+          body: (statement_block)))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (ternary_expression
+        condition: (identifier)
+        consequence: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation
+            params: (generic_type_annotation
+              id: (identifier)))
+          arguments: (arguments))
+        alternative: (arrow_function
+          parameters: (formal_parameters
+            (identifier)
+            type_annotation: (type_annotation
+              (generic_type_annotation
+                id: (identifier))))
+          body: (statement_block)))))
+  (if_statement
+    condition: (parenthesized_expression
+      (identifier))
+    consequence: (statement_block
+      (expression_statement
+        (call_expression
+          function: (identifier)
+          arguments: (arguments)))))
+  (comment)
+  (statement_block
+    (expression_statement
+      (call_expression
+        function: (identifier)
+        arguments: (arguments))))
+  (comment)
+  (while_statement
+    condition: (parenthesized_expression
+      (identifier))
+    body: (statement_block))
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters)
+        body: (statement_block
+          (try_statement
+            body: (statement_block
+              (return_statement
+                (identifier)))
+            handler: (catch_clause
+              parameter: (identifier)
+              body: (statement_block
+                (return_statement
+                  (identifier))))))))))
