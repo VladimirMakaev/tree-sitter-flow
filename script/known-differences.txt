@@ -1,0 +1,52 @@
+# Inputs where tree-sitter-flow builds a different tree than hermes-parser.
+#
+# `npm run compare` reports these inputs without failing, and fails when one
+# of them matches again, so the list stays minimal. Each entry gives the
+# verdicts of flow-parser 0.342.0, hermes-parser 0.37.0 and @babel/parser
+# 7.29.15 (with the flow and jsx plugins). The rule: when flow-parser accepts
+# an input and agrees with Hermes, tree-sitter-flow matches; when they
+# disagree, it follows flow-parser; when only Hermes accepts, it matches
+# Hermes unless Hermes' tree is plainly wrong.
+#
+# Format: <path relative to the suites directory> # <short reason>
+
+# `declare function f(): %checks;`
+#   flow-parser: rejects ("Unexpected token `%checks`, expected a type").
+#   @babel/parser: DeclareFunction with an InferredPredicate and no return type.
+#   hermes-parser: reads `%checks` as a GenericTypeAnnotation named `%checks`.
+#   tree-sitter-flow: declare_function with an inferred_predicate, as Babel.
+babel/packages/babel-parser/test/fixtures/flow/declare-statements/invalid-lone-predicate/input.js # Hermes reads `%checks` as a type name
+
+# Lines 4 and 8: `(a ? (b += c) : d => e : f)` and
+# `(a ? b => (c += d) : e => f : g)`.
+#   flow-parser: a type cast of the conditional `a ? (b += c) : (d => e)` with
+#     `: f` (line 8: `a ? (b => (c += d)) : (e => f)` with `: g`). It rejects
+#     lines 1 and 5.
+#   @babel/parser: the same type casts as flow-parser.
+#   hermes-parser: a conditional whose consequent is an arrow function with a
+#     return type, `(b += c): d => e`, whose parameter list it drops, because
+#     `b += c` is not a valid parameter.
+#   tree-sitter-flow: the type casts, as flow-parser and Babel. All other
+#     lines match all three parsers.
+babel/packages/babel-parser/test/fixtures/flow/arrows-in-ternaries/issue-13644/input.js # Hermes drops an invalid arrow parameter list
+
+# `(async) <T>(b) => c`
+#   flow-parser: rejects ("Unexpected token `=>`").
+#   @babel/parser: rejects ("Missing semicolon").
+#   hermes-parser: an async arrow function `<T>(b) => c`, taking the
+#     parenthesized identifier `(async)` as the async keyword.
+#   tree-sitter-flow: the permissive reading of tree-sitter-javascript, the
+#     comparison chain `((async) < T) > ((b) => c)`. That is not valid
+#     JavaScript either, since an arrow function cannot be an operand of `>`.
+babel/packages/babel-parser/test/fixtures/flow/type-generics/invalid-async-arrow-parenthesized-async/input.js # Hermes reads `(async)` as the async keyword
+
+# Hermes range bugs that the converter corrects (script/convert.mjs, "Hermes
+# range fixups"). They cause no mismatch; the compare summary counts them in
+# the hermes-range-fixup column.
+#
+# `class A { declare static }`
+# (babel/packages/babel-parser/test/fixtures/flow/class-properties/declare-field-named-static/input.js)
+#   flow-parser, @babel/parser and hermes-parser: one PropertyDefinition with
+#     `declare`, whose key is `static`.
+#   hermes-parser gives the key `static` the range of `declare` (12-19), where
+#     flow-parser and Babel give 20-26. tree-sitter-flow's tree is the same.

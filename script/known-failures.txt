@@ -1,0 +1,4 @@
+# Inputs that flow-parser or hermes-parser accepts but that tree-sitter-flow
+# does not parse cleanly. `npm run suites -- --check` fails on any other
+# failure. The list is empty: every accepted input parses.
+# Format: <path relative to the suites directory> # <reason>
