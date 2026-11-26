@@ -1,0 +1,170 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TREE_SITTER_VERSION: v0.27.2
+
+jobs:
+  generate:
+    name: Generated parser is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+      - uses: tree-sitter/setup-action/cli@v2
+        with:
+          tree-sitter-ref: ${{env.TREE_SITTER_VERSION}}
+      - name: Install tree-sitter-javascript
+        # grammar.js extends tree-sitter-javascript's grammar.
+        run: npm install --ignore-scripts
+      - name: Regenerate the parser
+        run: tree-sitter generate --abi=14
+      - name: Check that src/ is unchanged
+        run: git diff --exit-code -- src/
+      - name: Check that the versions agree
+        run: node script/check-versions.mjs
+
+  test:
+    name: Tests and bindings (${{matrix.os}})
+    runs-on: ${{matrix.os}}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+      - uses: tree-sitter/setup-action/cli@v2
+        with:
+          tree-sitter-ref: ${{env.TREE_SITTER_VERSION}}
+      - name: Install tree-sitter-javascript
+        # tree-sitter.json applies tree-sitter-javascript's queries too.
+        run: npm install --ignore-scripts
+      - name: Corpus, highlight and tag tests; Node, Rust, Python, Go and Swift bindings
+        uses: tree-sitter/parser-test-action@v2
+        with:
+          generate: false
+          test-rust: true
+          test-node: true
+          test-python: true
+          test-go: true
+          test-swift: ${{runner.os == 'macOS'}}
+      - name: Build the C library with CMake
+        shell: bash
+        run: |-
+          cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/cmake --config Release
+      - name: Check out the tree-sitter runtime
+        uses: actions/checkout@v5
+        with:
+          repository: tree-sitter/tree-sitter
+          ref: ${{env.TREE_SITTER_VERSION}}
+          path: .cache/tree-sitter
+          sparse-checkout: lib
+      - name: Parse with the C library and the tree-sitter runtime
+        shell: bash
+        run: |-
+          cmake -S test/c -B build/c-test -DTREE_SITTER_DIR="$PWD/.cache/tree-sitter"
+          cmake --build build/c-test --config Release
+          ctest --test-dir build/c-test -C Release --output-on-failure
+
+  crate:
+    name: Rust crate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Package
+        run: |-
+          cargo package --locked
+          ls -l target/package/*.crate
+      - name: Test the packaged crate
+        run: |-
+          cd target/package/tree-sitter-flow-*/
+          cargo test --locked
+      - name: Publish (dry run)
+        run: cargo publish --dry-run --locked
+
+  suites:
+    name: Parse rate on public suites
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+      - uses: tree-sitter/setup-action/cli@v2
+        with:
+          tree-sitter-ref: ${{env.TREE_SITTER_VERSION}}
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+      - name: Cache suites
+        uses: actions/cache@v4
+        with:
+          path: .cache/suites
+          key: suites-${{hashFiles('script/fetch-suites.sh')}}
+      - name: Fetch suites at pinned commits
+        run: npm run suites:fetch
+      - name: Every file that Flow accepts parses without ERROR or MISSING
+        run: npm run suites -- --check --perf
+        env:
+          TREE_SITTER: tree-sitter
+
+  javascript:
+    name: tree-sitter-javascript corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: tree-sitter/setup-action/cli@v2
+        with:
+          tree-sitter-ref: ${{env.TREE_SITTER_VERSION}}
+      - name: Cache suites
+        uses: actions/cache@v4
+        with:
+          path: .cache/suites
+          key: suites-${{hashFiles('script/fetch-suites.sh')}}
+      - name: Fetch suites at pinned commits
+        run: bash script/fetch-suites.sh
+      - name: Run tree-sitter-javascript's corpus
+        run: bash script/js-corpus.sh
+        env:
+          TREE_SITTER: tree-sitter
+
+  compare:
+    name: Hermes comparison
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+      - name: Install dependencies and build the Node binding
+        run: npm install
+      - name: Cache suites
+        uses: actions/cache@v4
+        with:
+          path: .cache/suites
+          key: suites-${{hashFiles('script/fetch-suites.sh')}}
+      - name: Fetch suites at pinned commits
+        run: npm run suites:fetch
+      - name: Converter unit tests
+        run: npm run test:scripts
+      - name: Compare every suite with hermes-parser
+        run: npm run compare -- --max-errors 100
