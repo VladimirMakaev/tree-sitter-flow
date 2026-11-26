@@ -1326,3 +1326,50 @@ type A<B> = B extends infer C extends D | F ? C : E;
         id: (identifier))
       false_type: (generic_type_annotation
         id: (identifier)))))
+
+============================================================
+Mapped type with write-only variance
+============================================================
+
+type A<T> = {+writeonly [K in keyof T]: T[K]};
+type B<T> = {writeonly [K in keyof T]: T[K]};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    right: (object_type_annotation
+      properties: (object_type_mapped_type_property
+        variance: (variance)
+        key_tparam: (type_parameter
+          name: (identifier))
+        source_type: (keyof_type_annotation
+          argument: (generic_type_annotation
+            id: (identifier)))
+        prop_type: (indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (generic_type_annotation
+            id: (identifier))))))
+  (type_alias
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    right: (object_type_annotation
+      properties: (object_type_mapped_type_property
+        variance: (variance)
+        key_tparam: (type_parameter
+          name: (identifier))
+        source_type: (keyof_type_annotation
+          argument: (generic_type_annotation
+            id: (identifier)))
+        prop_type: (indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (generic_type_annotation
+            id: (identifier)))))))

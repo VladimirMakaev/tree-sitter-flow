@@ -115,3 +115,36 @@ const r = Point {...p, x: 3};
           properties: (pair
             key: (property_identifier)
             value: (number)))))))
+
+============================================================
+Record expression with a computed constructor and empty type arguments
+============================================================
+
+const a = B['c-d'] {e: 1};
+const f = G<> {h: 1};
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (record_expression
+        record_constructor: (subscript_expression
+          object: (identifier)
+          index: (string
+            (string_fragment)))
+        properties: (record_expression_properties
+          properties: (pair
+            key: (property_identifier)
+            value: (number))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (record_expression
+        record_constructor: (identifier)
+        type_arguments: (type_parameter_instantiation)
+        properties: (record_expression_properties
+          properties: (pair
+            key: (property_identifier)
+            value: (number)))))))

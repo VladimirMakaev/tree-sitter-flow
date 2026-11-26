@@ -86,6 +86,7 @@ export default grammar(JavaScript, {
     $._type_parameters_open,
     $._component_type_parameters_open,
     $._field_name_separator,
+    $._arrow_block_end,
   ]),
 
   precedences: ($, previous) => previous.concat([
@@ -110,6 +111,8 @@ export default grammar(JavaScript, {
   // Two of tree-sitter-javascript's conflicts do not arise in this grammar.
   conflicts: ($, previous) => previous.filter(c => !isConflict(c, ['primary_expression', 'method_definition']) &&
     !isConflict(c, ['variable_declarator', '_for_header'])).concat([
+    [$.arrow_function],
+    [$.object_type_mapped_type_property, $.variance],
     [$.import_specifier, $._import_identifier],
     [$._declare_class_bare_property, $.object_type_property, $.object_type_indexer, $.object_type_internal_slot],
     [$._declare_class_bare_property, $.object_type_property],
@@ -430,7 +433,14 @@ export default grammar(JavaScript, {
     _declare_namespace: $ => seq(
       'namespace',
       field('id', $.identifier),
-      field('body', $.statement_block),
+      field('body', alias($._declare_namespace_body, $.statement_block)),
+    ),
+
+    // A namespace body also takes nested namespaces without `declare`.
+    _declare_namespace_body: $ => seq(
+      '{',
+      repeat(choice($.statement, alias($._declare_namespace, $.declare_namespace))),
+      '}',
     ),
 
     declare_export_declaration: $ => seq(
@@ -677,7 +687,7 @@ export default grammar(JavaScript, {
     ),
 
     record_expression: $ => prec.dynamic(1, seq(
-      field('record_constructor', choice($.identifier, $.member_expression)),
+      field('record_constructor', choice($.identifier, $.member_expression, $.subscript_expression)),
       field('type_arguments', optional($._call_type_arguments)),
       field('properties', $.record_expression_properties),
     )),
@@ -1160,6 +1170,10 @@ export default grammar(JavaScript, {
         $.expression,
         prec.dynamic(2, $.statement_block),
       )),
+      // Never produced: tells the scanner that an arrow function's body just
+      // ended, so that `(` or `[` on the next line starts a new statement, as
+      // in Flow's parser. An arrow function cannot be called directly.
+      optional($._arrow_block_end),
     ),
 
     // In `a ? (b) : c => (d) : e => f`, Hermes reads the parenthesized
@@ -1172,6 +1186,14 @@ export default grammar(JavaScript, {
       ':',
       field('alternative', $.expression),
     )),
+
+    // `await (a)(b)` awaits the call, as in Flow's parser: Flow code is in ES
+    // modules, where `await` is always a keyword. tree-sitter-javascript
+    // reads a call of a function named `await` there.
+    await_expression: $ => prec.dynamic(1, prec('unary_void', seq(
+      'await',
+      $.expression,
+    ))),
 
     _lhs_expression: ($, previous) => choice(previous, $.non_null_expression),
 
@@ -1192,7 +1214,19 @@ export default grammar(JavaScript, {
       ']',
     ),
 
-    _augmented_assignment_lhs: ($, previous) => choice(previous, $.non_null_expression),
+    // Flow's parser also takes a pattern, which its checker reports: `[a] += 1`.
+    _augmented_assignment_lhs: ($, previous) => choice(previous, $.non_null_expression, $._destructuring_pattern),
+
+    // A type annotation inside a destructuring pattern, `{a: b: T}`, which
+    // Flow's parser takes and its checker reports.
+    pair_pattern: $ => seq(
+      field('key', $._property_name),
+      ':',
+      choice(
+        field('value', choice($.pattern, $.assignment_pattern)),
+        seq(field('value', $.pattern), field('type_annotation', $.type_annotation)),
+      ),
+    ),
 
     primary_expression: ($, previous) => choice(
       previous,
@@ -1476,6 +1510,7 @@ export default grammar(JavaScript, {
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
       'abstract',
+      optional('override'),
       optional(field('variance', $.variance)),
       field('property', $._property_name),
       optional('?'),
@@ -1941,7 +1976,7 @@ export default grammar(JavaScript, {
 
     object_type_mapped_type_property: $ => seq(
       optional(choice(
-        seq(field('variance_op', choice('+', '-')), field('variance', alias('readonly', $.variance))),
+        seq(field('variance_op', choice('+', '-')), field('variance', alias(choice('readonly', 'writeonly'), $.variance))),
         field('variance', $.variance),
       )),
       '[',
@@ -1971,7 +2006,8 @@ export default grammar(JavaScript, {
       optional('static'),
       '[',
       '[',
-      field('id', $.identifier),
+      // Any name, keywords included: `[[new]]`, `[[call]]`.
+      field('id', choice($.identifier, alias(choice('new', $._reserved_identifier), $.identifier))),
       ']',
       ']',
       optional('?'),

@@ -1267,6 +1267,10 @@
         "required": true,
         "types": [
           {
+            "type": "array_pattern",
+            "named": true
+          },
+          {
             "type": "identifier",
             "named": true
           },
@@ -1276,6 +1280,10 @@
           },
           {
             "type": "non_null_expression",
+            "named": true
+          },
+          {
+            "type": "object_pattern",
             "named": true
           },
           {
@@ -13057,6 +13065,16 @@
           }
         ]
       },
+      "type_annotation": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_annotation",
+            "named": true
+          }
+        ]
+      },
       "value": {
         "multiple": false,
         "required": true,
@@ -13489,6 +13507,10 @@
           {
             "type": "member_expression",
             "named": true
+          },
+          {
+            "type": "subscript_expression",
+            "named": true
           }
         ]
       },
@@ -13848,6 +13870,10 @@
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "declare_namespace",
+          "named": true
+        },
         {
           "type": "statement",
           "named": true

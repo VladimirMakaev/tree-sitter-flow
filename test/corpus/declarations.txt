@@ -572,3 +572,86 @@ declare const [] = 'a';
     id: (array_pattern)
     init: (string
       (string_fragment))))
+
+============================================================
+Internal slot named new
+============================================================
+
+declare class A { [[new]](): B }
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      internal_slots: (object_type_internal_slot
+        id: (identifier)
+        value: (function_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier)))))))
+
+============================================================
+Opaque type lower bound alone on its line
+============================================================
+
+declare opaque type A
+  super
+    void;
+
+---
+
+(program
+  (declare_opaque_type
+    id: (identifier)
+    lower_bound: (void_type_annotation)))
+
+============================================================
+Nested namespace in a declared namespace
+============================================================
+
+declare namespace A {
+  namespace B {
+    const c: string;
+  }
+}
+
+---
+
+(program
+  (declare_namespace
+    id: (identifier)
+    body: (statement_block
+      (declare_namespace
+        id: (identifier)
+        body: (statement_block
+          (lexical_declaration
+            (variable_declarator
+              name: (identifier)
+              type_annotation: (type_annotation
+                (string_type_annotation)))))))))
+
+============================================================
+Declared function followed by a parenthesized expression on the next line
+============================================================
+
+declare function f(x: mixed): boolean
+(typeof x === null);
+
+---
+
+(program
+  (declare_function
+    id: (identifier)
+    type_annotation: (type_annotation
+      (function_type_annotation
+        params: (function_type_param
+          name: (identifier)
+          type_annotation: (mixed_type_annotation))
+        return_type: (boolean_type_annotation))))
+  (expression_statement
+    (parenthesized_expression
+      (binary_expression
+        left: (unary_expression
+          argument: (identifier))
+        right: (null)))))

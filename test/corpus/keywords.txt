@@ -451,3 +451,25 @@ import {set, get, as, using} from 'm';
           name: (identifier))))
     source: (string
       (string_fragment))))
+
+============================================================
+Destructuring patterns as compound assignment targets
+============================================================
+
+[a] += 1;
+({b} += 1);
+
+---
+
+(program
+  (expression_statement
+    (augmented_assignment_expression
+      left: (array_pattern
+        (identifier))
+      right: (number)))
+  (expression_statement
+    (parenthesized_expression
+      (augmented_assignment_expression
+        left: (object_pattern
+          (shorthand_property_identifier_pattern))
+        right: (number)))))

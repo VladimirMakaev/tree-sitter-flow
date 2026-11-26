@@ -180,3 +180,43 @@ JSX element whose text looks like an arrow function
         (jsx_text)
         close_tag: (jsx_closing_element
           name: (identifier))))))
+
+============================================================
+JSX element on the line after an import
+============================================================
+
+import A from 'a'
+<A />;
+
+---
+
+(program
+  (import_statement
+    (import_clause
+      (identifier))
+    source: (string
+      (string_fragment)))
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier))))
+
+============================================================
+JSX element on the line after a type alias
+============================================================
+
+type T = number
+<A b={1} />;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (number_type_annotation))
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)
+      attribute: (jsx_attribute
+        (property_identifier)
+        (jsx_expression
+          (number))))))

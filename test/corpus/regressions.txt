@@ -1,5 +1,5 @@
 ============================================================
-All of the cases above in one file
+All of the regression cases in one file
 ============================================================
 
 // @flow
@@ -85,6 +85,59 @@ interface A { set [B](c: string) }
 declare function f<R>():
   R extends A ? B : C;
 declare const [] = 'a';
+f<A?.['b']>();
+f<A?.[number]>();
+f<A?.['b'],>([]);
+class A { b = async c => c; }
+class A { b: C = async d => { e(); }; }
+f<renders? A>();
+const a = new Map<string, renders? (B)>();
+class A { b: C<D> = e
+  .f(this); }
+class A { b = (): void => c()
+  .d(); }
+declare class A { [[new]](): B }
+x = (f<>(): () => void);
+if ((a) < ((b: c) | 0) > ((d) | 0)) {}
+x = (a < (b << 16 >> 0) > (0));
+class C { [a] = async function* () {} }
+declare opaque type A
+  super
+    void;
+abstract class A { abstract override b }
+abstract class A { abstract override b: C }
+const {a: b: boolean, c: d: string} = e;
+(a: A) => {
+  b();
+}
+(c: C) => {};
+[a] += 1;
+({b} += 1);
+async function f() {
+  await (a)(b);
+}
+class A extends B<> {}
+import A from 'a'
+<A />;
+type T = number
+<A b={1} />;
+type A<T> = {+writeonly [K in keyof T]: T[K]};
+type B<T> = {writeonly [K in keyof T]: T[K]};
+declare namespace A {
+  namespace B {
+    const c: string;
+  }
+}
+const a = B['c-d'] {e: 1};
+const f = G<> {h: 1};
+declare function f(x: mixed): boolean
+(typeof x === null);
+type A = Array
+  <number>;
+abstract class A {
+  abstract a: number
+  +b: number
+}
 
 ---
 
@@ -816,4 +869,371 @@ declare const [] = 'a';
   (declare_variable
     id: (array_pattern)
     init: (string
-      (string_fragment))))
+      (string_fragment)))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (optional_indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (string_literal_type_annotation
+            (string
+              (string_fragment)))))
+      arguments: (arguments)))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (optional_indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (number_type_annotation)))
+      arguments: (arguments)))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (optional_indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (string_literal_type_annotation
+            (string
+              (string_fragment)))))
+      arguments: (arguments
+        (array))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (arrow_function
+          parameter: (identifier)
+          body: (identifier)))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        value: (arrow_function
+          parameter: (identifier)
+          body: (statement_block
+            (expression_statement
+              (call_expression
+                function: (identifier)
+                arguments: (arguments))))))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (type_operator
+          type_annotation: (generic_type_annotation
+            id: (identifier))))
+      arguments: (arguments)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (new_expression
+        constructor: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (string_type_annotation)
+          params: (type_operator
+            type_annotation: (generic_type_annotation
+              id: (identifier))))
+        arguments: (arguments))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier)
+            type_parameters: (type_parameter_instantiation
+              params: (generic_type_annotation
+                id: (identifier)))))
+        value: (call_expression
+          function: (member_expression
+            object: (identifier)
+            property: (property_identifier))
+          arguments: (arguments
+            (this))))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (arrow_function
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (void_type_annotation))
+          body: (call_expression
+            function: (member_expression
+              object: (call_expression
+                function: (identifier)
+                arguments: (arguments))
+              property: (property_identifier))
+            arguments: (arguments))))))
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      internal_slots: (object_type_internal_slot
+        id: (identifier)
+        value: (function_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier))))))
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (type_cast_expression
+        expression: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation)
+          arguments: (arguments))
+        type_annotation: (type_annotation
+          (function_type_annotation
+            return_type: (void_type_annotation))))))
+  (if_statement
+    condition: (parenthesized_expression
+      (binary_expression
+        left: (binary_expression
+          left: (parenthesized_expression
+            (identifier))
+          right: (parenthesized_expression
+            (binary_expression
+              left: (type_cast_expression
+                expression: (identifier)
+                type_annotation: (type_annotation
+                  (generic_type_annotation
+                    id: (identifier))))
+              right: (number))))
+        right: (parenthesized_expression
+          (binary_expression
+            left: (parenthesized_expression
+              (identifier))
+            right: (number)))))
+    consequence: (statement_block))
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (parenthesized_expression
+        (binary_expression
+          left: (binary_expression
+            left: (identifier)
+            right: (parenthesized_expression
+              (binary_expression
+                left: (binary_expression
+                  left: (identifier)
+                  right: (number))
+                right: (number))))
+          right: (parenthesized_expression
+            (number))))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (computed_property_name
+          (identifier))
+        value: (generator_function
+          parameters: (formal_parameters)
+          body: (statement_block)))))
+  (declare_opaque_type
+    id: (identifier)
+    lower_bound: (void_type_annotation))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (abstract_property_definition
+        property: (property_identifier))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (abstract_property_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (object_pattern
+        (pair_pattern
+          key: (property_identifier)
+          value: (identifier)
+          type_annotation: (type_annotation
+            (boolean_type_annotation)))
+        (pair_pattern
+          key: (property_identifier)
+          value: (identifier)
+          type_annotation: (type_annotation
+            (string_type_annotation))))
+      value: (identifier)))
+  (expression_statement
+    (arrow_function
+      parameters: (formal_parameters
+        (identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      body: (statement_block
+        (expression_statement
+          (call_expression
+            function: (identifier)
+            arguments: (arguments))))))
+  (expression_statement
+    (arrow_function
+      parameters: (formal_parameters
+        (identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      body: (statement_block)))
+  (expression_statement
+    (augmented_assignment_expression
+      left: (array_pattern
+        (identifier))
+      right: (number)))
+  (expression_statement
+    (parenthesized_expression
+      (augmented_assignment_expression
+        left: (object_pattern
+          (shorthand_property_identifier_pattern))
+        right: (number))))
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters)
+    body: (statement_block
+      (expression_statement
+        (await_expression
+          (call_expression
+            function: (parenthesized_expression
+              (identifier))
+            arguments: (arguments
+              (identifier)))))))
+  (class_declaration
+    name: (identifier)
+    (class_heritage
+      (identifier)
+      super_type_arguments: (type_parameter_instantiation))
+    body: (class_body))
+  (import_statement
+    (import_clause
+      (identifier))
+    source: (string
+      (string_fragment)))
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)))
+  (type_alias
+    id: (identifier)
+    right: (number_type_annotation))
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)
+      attribute: (jsx_attribute
+        (property_identifier)
+        (jsx_expression
+          (number)))))
+  (type_alias
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    right: (object_type_annotation
+      properties: (object_type_mapped_type_property
+        variance: (variance)
+        key_tparam: (type_parameter
+          name: (identifier))
+        source_type: (keyof_type_annotation
+          argument: (generic_type_annotation
+            id: (identifier)))
+        prop_type: (indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (generic_type_annotation
+            id: (identifier))))))
+  (type_alias
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    right: (object_type_annotation
+      properties: (object_type_mapped_type_property
+        variance: (variance)
+        key_tparam: (type_parameter
+          name: (identifier))
+        source_type: (keyof_type_annotation
+          argument: (generic_type_annotation
+            id: (identifier)))
+        prop_type: (indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (generic_type_annotation
+            id: (identifier))))))
+  (declare_namespace
+    id: (identifier)
+    body: (statement_block
+      (declare_namespace
+        id: (identifier)
+        body: (statement_block
+          (lexical_declaration
+            (variable_declarator
+              name: (identifier)
+              type_annotation: (type_annotation
+                (string_type_annotation))))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (record_expression
+        record_constructor: (subscript_expression
+          object: (identifier)
+          index: (string
+            (string_fragment)))
+        properties: (record_expression_properties
+          properties: (pair
+            key: (property_identifier)
+            value: (number))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (record_expression
+        record_constructor: (identifier)
+        type_arguments: (type_parameter_instantiation)
+        properties: (record_expression_properties
+          properties: (pair
+            key: (property_identifier)
+            value: (number))))))
+  (declare_function
+    id: (identifier)
+    type_annotation: (type_annotation
+      (function_type_annotation
+        params: (function_type_param
+          name: (identifier)
+          type_annotation: (mixed_type_annotation))
+        return_type: (boolean_type_annotation))))
+  (expression_statement
+    (parenthesized_expression
+      (binary_expression
+        left: (unary_expression
+          argument: (identifier))
+        right: (null))))
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (number_type_annotation))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (abstract_property_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation)))
+      member: (field_definition
+        variance: (variance)
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation))))))

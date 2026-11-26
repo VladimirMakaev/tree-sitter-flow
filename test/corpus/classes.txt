@@ -173,3 +173,194 @@ class A { b: (c: mixed) => implies c is D; }
               parameter_name: (identifier)
               type_annotation: (generic_type_annotation
                 id: (identifier)))))))))
+
+============================================================
+Class field with an async arrow function
+============================================================
+
+class A { b = async c => c; }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (arrow_function
+          parameter: (identifier)
+          body: (identifier))))))
+
+============================================================
+Typed class field with an async arrow function
+============================================================
+
+class A { b: C = async d => { e(); }; }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        value: (arrow_function
+          parameter: (identifier)
+          body: (statement_block
+            (expression_statement
+              (call_expression
+                function: (identifier)
+                arguments: (arguments)))))))))
+
+============================================================
+Typed class field initializer continued on the next line
+============================================================
+
+class A { b: C<D> = e
+  .f(this); }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier)
+            type_parameters: (type_parameter_instantiation
+              params: (generic_type_annotation
+                id: (identifier)))))
+        value: (call_expression
+          function: (member_expression
+            object: (identifier)
+            property: (property_identifier))
+          arguments: (arguments
+            (this)))))))
+
+============================================================
+Arrow function class field continued on the next line
+============================================================
+
+class A { b = (): void => c()
+  .d(); }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (arrow_function
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (void_type_annotation))
+          body: (call_expression
+            function: (member_expression
+              object: (call_expression
+                function: (identifier)
+                arguments: (arguments))
+              property: (property_identifier))
+            arguments: (arguments)))))))
+
+============================================================
+Computed class field with an async generator function
+============================================================
+
+class C { [a] = async function* () {} }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (computed_property_name
+          (identifier))
+        value: (generator_function
+          parameters: (formal_parameters)
+          body: (statement_block))))))
+
+============================================================
+Abstract override property
+============================================================
+
+abstract class A { abstract override b }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (abstract_property_definition
+        property: (property_identifier)))))
+
+============================================================
+Typed abstract override property
+============================================================
+
+abstract class A { abstract override b: C }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (abstract_property_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))))))
+
+============================================================
+Property with a variance sigil on the line after a typed property
+============================================================
+
+abstract class A {
+  abstract a: number
+  +b: number
+}
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (abstract_property_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation)))
+      member: (field_definition
+        variance: (variance)
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation))))))
+
+============================================================
+Empty type arguments of a superclass
+============================================================
+
+class A extends B<> {}
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    (class_heritage
+      (identifier)
+      super_type_arguments: (type_parameter_instantiation))
+    body: (class_body)))

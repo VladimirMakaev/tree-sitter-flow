@@ -1317,3 +1317,289 @@ const f =
           (generic_type_annotation
             id: (identifier)))
         body: (identifier)))))
+
+============================================================
+Optional indexed access as a call type argument
+============================================================
+
+// @flow
+f<A?.['b']>();
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (optional_indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (string_literal_type_annotation
+            (string
+              (string_fragment)))))
+      arguments: (arguments))))
+
+============================================================
+Optional indexed access with a number index as a call type argument
+============================================================
+
+// @flow
+f<A?.[number]>();
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (optional_indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (number_type_annotation)))
+      arguments: (arguments))))
+
+============================================================
+Optional indexed access call type argument with a trailing comma
+============================================================
+
+// @flow
+f<A?.['b'],>([]);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (optional_indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (string_literal_type_annotation
+            (string
+              (string_fragment)))))
+      arguments: (arguments
+        (array)))))
+
+============================================================
+Maybe renders type as a call type argument
+============================================================
+
+// @flow
+f<renders? A>();
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (type_operator
+          type_annotation: (generic_type_annotation
+            id: (identifier))))
+      arguments: (arguments))))
+
+============================================================
+Maybe renders type as a type argument of new
+============================================================
+
+// @flow
+const a = new Map<string, renders? (B)>();
+
+---
+
+(program
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (new_expression
+        constructor: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (string_type_annotation)
+          params: (type_operator
+            type_annotation: (generic_type_annotation
+              id: (identifier))))
+        arguments: (arguments)))))
+
+============================================================
+Cast of a call with empty type arguments
+============================================================
+
+// @flow
+x = (f<>(): () => void);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (type_cast_expression
+        expression: (call_expression
+          function: (identifier)
+          type_arguments: (type_parameter_instantiation)
+          arguments: (arguments))
+        type_annotation: (type_annotation
+          (function_type_annotation
+            return_type: (void_type_annotation)))))))
+
+============================================================
+Relational operators around an operand with a type cast
+============================================================
+
+if ((a) < ((b: c) | 0) > ((d) | 0)) {}
+
+---
+
+(program
+  (if_statement
+    condition: (parenthesized_expression
+      (binary_expression
+        left: (binary_expression
+          left: (parenthesized_expression
+            (identifier))
+          right: (parenthesized_expression
+            (binary_expression
+              left: (type_cast_expression
+                expression: (identifier)
+                type_annotation: (type_annotation
+                  (generic_type_annotation
+                    id: (identifier))))
+              right: (number))))
+        right: (parenthesized_expression
+          (binary_expression
+            left: (parenthesized_expression
+              (identifier))
+            right: (number)))))
+    consequence: (statement_block)))
+
+============================================================
+Relational operators around an operand with shifts
+============================================================
+
+x = (a < (b << 16 >> 0) > (0));
+
+---
+
+(program
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (parenthesized_expression
+        (binary_expression
+          left: (binary_expression
+            left: (identifier)
+            right: (parenthesized_expression
+              (binary_expression
+                left: (binary_expression
+                  left: (identifier)
+                  right: (number))
+                right: (number))))
+          right: (parenthesized_expression
+            (number)))))))
+
+============================================================
+Type arguments on the next line
+============================================================
+
+type A = Array
+  <number>;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (number_type_annotation)))))
+
+============================================================
+Type annotations inside a destructuring pattern
+============================================================
+
+const {a: b: boolean, c: d: string} = e;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (object_pattern
+        (pair_pattern
+          key: (property_identifier)
+          value: (identifier)
+          type_annotation: (type_annotation
+            (boolean_type_annotation)))
+        (pair_pattern
+          key: (property_identifier)
+          value: (identifier)
+          type_annotation: (type_annotation
+            (string_type_annotation))))
+      value: (identifier))))
+
+============================================================
+Arrow function followed by a parenthesized expression on the next line
+============================================================
+
+(a: A) => {
+  b();
+}
+(c: C) => {};
+
+---
+
+(program
+  (expression_statement
+    (arrow_function
+      parameters: (formal_parameters
+        (identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      body: (statement_block
+        (expression_statement
+          (call_expression
+            function: (identifier)
+            arguments: (arguments))))))
+  (expression_statement
+    (arrow_function
+      parameters: (formal_parameters
+        (identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      body: (statement_block))))
+
+============================================================
+Await of a call with a parenthesized callee
+============================================================
+
+async function f() {
+  await (a)(b);
+}
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters)
+    body: (statement_block
+      (expression_statement
+        (await_expression
+          (call_expression
+            function: (parenthesized_expression
+              (identifier))
+            arguments: (arguments
+              (identifier))))))))
