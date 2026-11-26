@@ -9,10 +9,21 @@ license = "MIT"
 name = "tree-sitter-flow"
 readme = "README.md"
 repository = "https://github.com/VladimirMakaev/tree-sitter-flow"
+homepage = "https://github.com/VladimirMakaev/tree-sitter-flow"
 version = "0.1.0"
 
 build = "bindings/rust/build.rs"
-include = [ "bindings/rust/*", "grammar.js", "queries/*", "src/*", "tree-sitter.json", "/LICENSE" ]
+include = [
+  "/bindings/rust/*",
+  "/src/parser.c",
+  "/src/scanner.c",
+  "/src/tree_sitter/*",
+  "/src/grammar.json",
+  "/src/node-types.json",
+  "/queries/*",
+  "/LICENSE",
+  "/README.md",
+]
 
 [lib]
 path = "bindings/rust/lib.rs"
