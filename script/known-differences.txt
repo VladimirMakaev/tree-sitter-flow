@@ -62,3 +62,24 @@ babel/packages/babel-parser/test/fixtures/flow/type-generics/invalid-async-arrow
 #     `declare`, whose key is `static`.
 #   hermes-parser gives the key `static` the range of `declare` (12-19), where
 #     flow-parser and Babel give 20-26. tree-sitter-flow's tree is the same.
+
+# An arrow function body that is a block holding only a labeled statement,
+# `e => { label: 42 }`.
+#   flow-parser, @babel/parser and hermes-parser: a BlockStatement with a
+#     LabeledStatement, as the language specifies.
+#   tree-sitter-flow: an object, as tree-sitter-javascript, so that plain
+#     JavaScript keeps tree-sitter-javascript's tree exactly.
+test/corpus/annotations.txt: Arrow function bodies # a block with a label reads as an object, as in tree-sitter-javascript
+test/corpus/ranges.txt: Arrow function body that is an object with a label-like key # a block with a label reads as an object, as in tree-sitter-javascript
+flow-typed/definitions/npm/jasmine_v2.4.x/test_jasmine_v2.4.x_addMatchers.js # a block with a label reads as an object, as in tree-sitter-javascript
+flow-typed/definitions/npm/jasmine_v3.x.x/test_addMatchers.js # a block with a label reads as an object, as in tree-sitter-javascript
+flow-typed/definitions/npm/koa-bunyan-logger_v2.x.x/test_koa_bunyan_logger_v2.x.x.js # a block with a label reads as an object, as in tree-sitter-javascript
+
+# `f.g<typeof import('a')>('a');`
+#   flow-parser: a call of `f.g` with the type argument `typeof import('a')`.
+#   @babel/parser: comparisons around a dynamic `import('a')`.
+#   hermes-parser: comparisons around a dynamic `import('a')`.
+#   tree-sitter-flow: the call with type arguments, as flow-parser, the
+#     reference implementation, which also reads `f<typeof import('a')>()`
+#     this way and which hermes-parser rejects.
+test/corpus/annotations.txt: Typeof import type as a member call type argument # Hermes and Babel compare around a dynamic import

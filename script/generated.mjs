@@ -10,11 +10,14 @@
 // triples. Only snippets that flow-parser accepts (with `@flow`) are kept.
 // Each must parse with no ERROR or MISSING node, and with the same reading of
 // every `<` as flow-parser: the same number of calls with type arguments,
-// comparisons, arrow functions, JSX elements and type casts. The exit code is
-// non-zero on any failure.
+// comparisons, arrow functions, JSX elements and type casts. Every node must
+// also end at its last token (script/ranges.mjs); Flow declarations and
+// statements followed by comments in many placements check that. The exit
+// code is non-zero on any failure.
 
 import path from 'node:path';
 import {createRequire} from 'node:module';
+import {rangeProblems} from './ranges.mjs';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -45,6 +48,7 @@ const TYPES = [
   'component()', 'hook (a: A) => B',
   'renders A', 'renders? A', 'renders* A', 'renders (A | B)',
   'interface {a: T}', '$ReadOnly<{a: T}>', 'Class<T>', 'mixed', 'empty', 'any',
+  "import('a')", "typeof import('a')", "import('a').B", "typeof import('a').B",
 ];
 
 // Argument lists, each the text between `(` and `)`.
@@ -147,6 +151,38 @@ const START_CONTEXTS = [
   'x = (a) < (b) ? E : c;', 'return E;',
 ];
 
+// Flow declarations and statements, without a final `;`, each followed by a
+// comment and what comes next: the node must end at its last token.
+const DECLARATIONS = [
+  'type A = number', 'type A = {a: B}', 'type A = | B | C', 'type A = B<C>', 'type A = typeof b',
+  'opaque type A = number', 'opaque type A: B = C', 'declare opaque type A', 'declare opaque type A super B',
+  'declare var a: number', 'declare let a: T', 'declare const a: T', 'declare function f(): void',
+  'declare function f(x: mixed): boolean %checks(typeof x === "string")', 'declare class A {}',
+  "declare module 'a' {}", 'declare export function f(): void', 'declare type A = B', 'export type A = B',
+  "import type A from 'a'", "import {type A} from 'a'", 'interface I {}', 'enum E {A}', 'x = (a: T)',
+  'const a: T = b', 'let a: T', 'class K { a: T }', 'class K { a: T = 1 }', 'class K<T> extends B<T> {}',
+  'component C() {}', 'hook useA() {}', 'declare component C()', 'declare hook useA(): void',
+  'function f(): T {}', 'function f<T>(a: T): T', 'x = a as T', 'f<T>(a)', 'x = match (a) { 1 => 2 }',
+  'declare export default T', "declare module.exports: T", 'export default class {}', 'record R {}',
+];
+const COMMENTS = [' // c', '  // c', ' /* c */', '/* c */', ' /**\n * c\n */', ' /* c */ /* d */', '\n// c',
+  '\n/**\n * c\n */', ''];
+const FOLLOWERS = ['', '\n', '\nh();', '\n\nexport type B = C;'];
+const BODIES = ['S', 'function g() { S }', 'function g() {\n  S\n}', 'if (a) {\n  S\n}'];
+
+function declarations() {
+  const out = new Set();
+  for (const d of DECLARATIONS) {
+    for (const comment of COMMENTS) {
+      for (const follower of FOLLOWERS) out.add(`${d}${comment}${follower}`);
+    }
+    for (const body of BODIES) {
+      for (const comment of COMMENTS.slice(0, 5)) out.add(body.replace('S', `${d}${comment}`));
+    }
+  }
+  return [...out];
+}
+
 // A small deterministic generator (mulberry32).
 function random(seed) {
   let s = seed >>> 0;
@@ -194,6 +230,7 @@ function snippets() {
   for (const context of START_CONTEXTS) {
     for (const start of STARTS) add(context, start);
   }
+  for (const d of declarations()) out.add(d);
   return [...out];
 }
 
@@ -305,6 +342,12 @@ async function main() {
       const problem = firstProblem(tree.rootNode);
       failures.push({source, problem: `${problem.isMissing ? 'MISSING' : problem.type} at ` +
         `${problem.startPosition.row}:${problem.startPosition.column}`});
+      continue;
+    }
+    const ranges = rangeProblems(tree.rootNode, 1);
+    if (ranges.length) {
+      const r = ranges[0];
+      failures.push({source, problem: `${r.type} [${r.start}, ${r.end}] ${r.what} at ${r.lastToken}`});
       continue;
     }
     const expected = flowShape(asts.get(source).body);

@@ -172,10 +172,30 @@ const STATEMENTS = [
   'class K { get = E; set; static; async; }', 'x = {a: E, b() {}, [E]: E};',
 ];
 
+// Statements, with and without `;`, followed by comments in many placements.
+const COMMENTED = [
+  'if (a) {}', 'if (a) { b(); }', '{ a(); }', 'function f() { return 1; }', 'function f(a) {\n  return a;\n}',
+  'class K {}', 'class K { m() {} }', 'x = E', 'x = E;', 'const v = E', 'let v = E;', 'E', 'E;',
+  'while (a) {}', 'for (;;) {}', 'try {} catch (e) {}', 'label: {}', 'do {} while (a)', 'do {} while (a);',
+  'export default E', 'export const v = E', 'switch (a) {}', 'x = () => {}', 'x = function () {}',
+  'function g() { return E }', 'function g() { E }', 'class K { a = E }', 'class K { a = E\n}',
+];
+const COMMENT_EXPRESSIONS = ['a', 'f()', 'a.b', '(a)', '[a]', '`t`', 'a => a'];
+const COMMENTS = [' // c', '  // c', ' /* c */', '/* c */', ' /**\n * c\n */', ' /* c */ /* d */', '\n// c',
+  '\n/**\n * c\n */', '  // c\n/**\n * x\n */'];
+const FOLLOWERS = ['', '\n', '\nh();', '\n\nvar z = 1;'];
+
 function generated() {
   const out = new Set();
   for (const statement of STATEMENTS) {
     for (const expression of EXPRESSIONS) out.add(statement.replaceAll('E', expression));
+  }
+  for (const statement of COMMENTED) {
+    for (const expression of COMMENT_EXPRESSIONS) {
+      for (const comment of COMMENTS) {
+        for (const follower of FOLLOWERS) out.add(statement.replaceAll('E', expression) + comment + follower);
+      }
+    }
   }
   return [...out].map((source, i) => ({name: `generated #${i}: ${JSON.stringify(source)}`, source}));
 }

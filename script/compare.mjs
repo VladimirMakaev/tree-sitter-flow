@@ -7,21 +7,24 @@
 //   npm run compare -- --max-errors 20       # print at most 20 mismatches
 //
 // Suites: corpus (test/corpus), flow-parser, hermes, babel, flow-typed, react,
-// react-native. The public suites come from script/fetch-suites.sh.
+// react-native, flow-tests, prettier, relay, metro, stylex. The public suites
+// come from script/fetch-suites.sh.
 //
 // For each input that hermes-parser accepts, the Hermes AST is converted to
 // the tree that tree-sitter-flow should produce (script/convert.mjs, naming in
 // script/mapping.mjs) and compared with the actual tree: node kinds, byte
 // ranges and, where both sides have one, field names. tree-sitter nodes with
 // no ESTree counterpart (mapping.mjs IGNORED) and anonymous tokens are not
-// compared. Exits with status 1 when any input mismatches, except the inputs
-// listed with a reason in script/known-differences.txt.
+// compared. Every tree also passes the range checks of script/ranges.mjs.
+// Exits with status 1 when any input mismatches, except the inputs listed
+// with a reason in script/known-differences.txt.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 
 import {convert} from './convert.mjs';
+import {rangeProblems} from './ranges.mjs';
 import {IGNORED} from './mapping.mjs';
 import {ROOT, SUITES, SUITE_FILES, corpusInputs, ensureSuites, flowParserTests} from './suites.mjs';
 
@@ -227,6 +230,7 @@ function describe(m) {
   const range = `[${m.start}, ${m.end})`;
   if (m.type === 'field') return `field     ${m.kind} ${range}: expected field \`${m.expected}\`, got \`${m.actual}\``;
   if (m.type === 'missing') return `missing   ${m.kind} ${range}${m.field ? ` (field \`${m.field}\`)` : ''}`;
+  if (m.type === 'range') return `range     ${m.kind} ${range}: its last token ends at ${m.lastToken}`;
   return `unexpected ${m.kind} ${range}${m.field ? ` (field \`${m.field}\`)` : ''}`;
 }
 
@@ -286,7 +290,9 @@ async function main() {
         expected = [{kind: `converter error: ${e.message}`, start: 0, end: 0, field: null, parent: -1}];
       }
       const tree = parser.parse(source, undefined, {bufferSize: Math.max(32 * 1024, source.length * 2 + 16)});
-      const mismatches = diff(expected, actualNodes(tree));
+      // Also every node must end at its last token (script/ranges.mjs).
+      const mismatches = [...diff(expected, actualNodes(tree)), ...rangeProblems(tree.rootNode, 3).map(r => ({
+        type: 'range', kind: `${r.type} ${r.what}`, start: r.start, end: r.end, lastToken: r.lastToken}))];
       if (known.has(input.name)) {
         if (mismatches.length > 0) {
           stats.known++;
