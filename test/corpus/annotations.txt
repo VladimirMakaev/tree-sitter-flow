@@ -1,0 +1,776 @@
+============================================================
+Variable annotations
+============================================================
+
+const a: number = 1;
+let b: ?string;
+var c: Array<string> = [];
+const {x, y}: Point = p;
+const [first]: [number] = t;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      type_annotation: (type_annotation
+        (number_type_annotation))
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      type_annotation: (type_annotation
+        (nullable_type_annotation
+          type_annotation: (string_type_annotation)))))
+  (variable_declaration
+    (variable_declarator
+      name: (identifier)
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier)
+          type_parameters: (type_parameter_instantiation
+            params: (string_type_annotation))))
+      value: (array)))
+  (lexical_declaration
+    (variable_declarator
+      name: (object_pattern
+        (shorthand_property_identifier_pattern)
+        (shorthand_property_identifier_pattern))
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier)))
+      value: (identifier)))
+  (lexical_declaration
+    (variable_declarator
+      name: (array_pattern
+        (identifier))
+      type_annotation: (type_annotation
+        (tuple_type_annotation
+          element_types: (number_type_annotation)))
+      value: (identifier))))
+
+============================================================
+Parameter annotations
+============================================================
+
+function f(a: number, b?: string, c: boolean = true, ...rest: Array<mixed>): void {}
+function g({a, b}: Props, [c]: [number]): Result {}
+const h = (x: number): number => x * 2;
+const i = async (x: string): Promise<void> => {};
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (number_type_annotation))
+      (identifier)
+      type_annotation: (type_annotation
+        (string_type_annotation))
+      (assignment_pattern
+        left: (identifier)
+        type_annotation: (type_annotation
+          (boolean_type_annotation))
+        right: (true))
+      (rest_pattern
+        (identifier))
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier)
+          type_parameters: (type_parameter_instantiation
+            params: (mixed_type_annotation)))))
+    return_type: (type_annotation
+      (void_type_annotation))
+    body: (statement_block))
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (object_pattern
+        (shorthand_property_identifier_pattern)
+        (shorthand_property_identifier_pattern))
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier)))
+      (array_pattern
+        (identifier))
+      type_annotation: (type_annotation
+        (tuple_type_annotation
+          element_types: (number_type_annotation))))
+    return_type: (type_annotation
+      (generic_type_annotation
+        id: (identifier)))
+    body: (statement_block))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (number_type_annotation)))
+        return_type: (type_annotation
+          (number_type_annotation))
+        body: (binary_expression
+          left: (identifier)
+          right: (number)))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (string_type_annotation)))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)
+            type_parameters: (type_parameter_instantiation
+              params: (void_type_annotation))))
+        body: (statement_block)))))
+
+============================================================
+This parameter
+============================================================
+
+function f(this: Window, x: number) {}
+class A {
+  m(this: A): void {}
+}
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier)))
+      (identifier)
+      type_annotation: (type_annotation
+        (number_type_annotation)))
+    body: (statement_block))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (void_type_annotation))
+        body: (statement_block)))))
+
+============================================================
+Predicate functions
+============================================================
+
+function isNumber(x: mixed): boolean %checks {
+  return typeof x === 'number';
+}
+const isString = (x: mixed): %checks => typeof x === 'string';
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (mixed_type_annotation)))
+    return_type: (type_annotation
+      (boolean_type_annotation))
+    predicate: (inferred_predicate)
+    body: (statement_block
+      (return_statement
+        (binary_expression
+          left: (unary_expression
+            argument: (identifier))
+          right: (string
+            (string_fragment))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (mixed_type_annotation)))
+        predicate: (inferred_predicate)
+        body: (binary_expression
+          left: (unary_expression
+            argument: (identifier))
+          right: (string
+            (string_fragment)))))))
+
+============================================================
+Type parameters
+============================================================
+
+function id<T>(x: T): T { return x; }
+function f<T: Object = {}, +U, -V>(x: T) {}
+class Box<T> {}
+type Pair<A, B = A> = [A, B];
+const g = <T>(x: T): T => x;
+const h = async <T>(x: T): Promise<T> => x;
+function k<const T>(x: T): T { return x; }
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier))))
+    return_type: (type_annotation
+      (generic_type_annotation
+        id: (identifier)))
+    body: (statement_block
+      (return_statement
+        (identifier))))
+  (function_declaration
+    name: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)
+        bound: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        default: (object_type_annotation))
+      params: (type_parameter
+        variance: (variance)
+        name: (identifier))
+      params: (type_parameter
+        variance: (variance)
+        name: (identifier)))
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier))))
+    body: (statement_block))
+  (class_declaration
+    name: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    body: (class_body))
+  (type_alias
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier))
+      params: (type_parameter
+        name: (identifier)
+        default: (generic_type_annotation
+          id: (identifier))))
+    right: (tuple_type_annotation
+      element_types: (generic_type_annotation
+        id: (identifier))
+      element_types: (generic_type_annotation
+        id: (identifier))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (identifier))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)
+            type_parameters: (type_parameter_instantiation
+              params: (generic_type_annotation
+                id: (identifier)))))
+        body: (identifier))))
+  (function_declaration
+    name: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier))))
+    return_type: (type_annotation
+      (generic_type_annotation
+        id: (identifier)))
+    body: (statement_block
+      (return_statement
+        (identifier)))))
+
+============================================================
+Call type arguments
+============================================================
+
+f<number>(1);
+obj.method<string, number>('a', 2);
+new Map<string, number>();
+new Set<number>;
+f?.<T>(x);
+
+---
+
+(program
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (number_type_annotation))
+      arguments: (arguments
+        (number))))
+  (expression_statement
+    (call_expression
+      function: (member_expression
+        object: (identifier)
+        property: (property_identifier))
+      type_arguments: (type_parameter_instantiation
+        params: (string_type_annotation)
+        params: (number_type_annotation))
+      arguments: (arguments
+        (string
+          (string_fragment))
+        (number))))
+  (expression_statement
+    (new_expression
+      constructor: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (string_type_annotation)
+        params: (number_type_annotation))
+      arguments: (arguments)))
+  (expression_statement
+    (new_expression
+      constructor: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (number_type_annotation))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      optional_chain: (optional_chain)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))
+      arguments: (arguments
+        (identifier)))))
+
+============================================================
+Comparisons that are not type arguments
+============================================================
+
+a < b > c;
+a < b;
+if (x < y && y > z) {}
+f(a < b, c > d);
+
+---
+
+(program
+  (expression_statement
+    (binary_expression
+      left: (binary_expression
+        left: (identifier)
+        right: (identifier))
+      right: (identifier)))
+  (expression_statement
+    (binary_expression
+      left: (identifier)
+      right: (identifier)))
+  (if_statement
+    condition: (parenthesized_expression
+      (binary_expression
+        left: (binary_expression
+          left: (identifier)
+          right: (identifier))
+        right: (binary_expression
+          left: (identifier)
+          right: (identifier))))
+    consequence: (statement_block))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      arguments: (arguments
+        (binary_expression
+          left: (identifier)
+          right: (identifier))
+        (binary_expression
+          left: (identifier)
+          right: (identifier))))))
+
+============================================================
+Type casts
+============================================================
+
+const a = (x: any);
+const b = ((y: any): number);
+f((z: string));
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (type_cast_expression
+        expression: (identifier)
+        type_annotation: (type_annotation
+          (any_type_annotation)))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (type_cast_expression
+        expression: (type_cast_expression
+          expression: (identifier)
+          type_annotation: (type_annotation
+            (any_type_annotation)))
+        type_annotation: (type_annotation
+          (number_type_annotation)))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      arguments: (arguments
+        (type_cast_expression
+          expression: (identifier)
+          type_annotation: (type_annotation
+            (string_type_annotation)))))))
+
+============================================================
+As expressions
+============================================================
+
+const a = x as number;
+const b = y as const;
+const c = z as any as Foo;
+const d = (a as T).b;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (as_expression
+        expression: (identifier)
+        type_annotation: (number_type_annotation))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (as_const_expression
+        expression: (identifier))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (as_expression
+        expression: (as_expression
+          expression: (identifier)
+          type_annotation: (any_type_annotation))
+        type_annotation: (generic_type_annotation
+          id: (identifier)))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (member_expression
+        object: (parenthesized_expression
+          (as_expression
+            expression: (identifier)
+            type_annotation: (generic_type_annotation
+              id: (identifier))))
+        property: (property_identifier)))))
+
+============================================================
+Class members
+============================================================
+
+class A extends B<T> implements I, J<K> {
+  x: number;
+  y: string = 'y';
+  +covariant: number;
+  -contravariant: string;
+  static s: boolean = false;
+  #priv: number = 1;
+  declare d: string;
+  m<T>(x: T): T { return x; }
+  get g(): number { return 1; }
+  set g(v: number): void {}
+  static async *gen(): AsyncGenerator<number, void, void> {}
+}
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    (class_heritage
+      (identifier)
+      super_type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier))))
+    implements: (class_implements
+      id: (identifier))
+    implements: (class_implements
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier))))
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation)))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (string_type_annotation))
+        value: (string
+          (string_fragment)))
+      member: (field_definition
+        variance: (variance)
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation)))
+      member: (field_definition
+        variance: (variance)
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (string_type_annotation)))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (boolean_type_annotation))
+        value: (false))
+      member: (field_definition
+        property: (private_property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation))
+        value: (number))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (string_type_annotation)))
+      member: (method_definition
+        name: (property_identifier)
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (statement_block
+          (return_statement
+            (identifier))))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        return_type: (type_annotation
+          (number_type_annotation))
+        body: (statement_block
+          (return_statement
+            (number))))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (number_type_annotation)))
+        return_type: (type_annotation
+          (void_type_annotation))
+        body: (statement_block))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)
+            type_parameters: (type_parameter_instantiation
+              params: (number_type_annotation)
+              params: (void_type_annotation)
+              params: (void_type_annotation))))
+        body: (statement_block)))))
+
+============================================================
+Class fields on one line
+============================================================
+
+class P { x: string y: number; }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (string_type_annotation)))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation))))))
+
+============================================================
+Catch and for annotations
+============================================================
+
+try {} catch (e: mixed) {}
+for (const x: number of xs) {}
+for (const k: string in obj) {}
+
+---
+
+(program
+  (try_statement
+    body: (statement_block)
+    handler: (catch_clause
+      parameter: (identifier)
+      type_annotation: (type_annotation
+        (mixed_type_annotation))
+      body: (statement_block)))
+  (for_in_statement
+    left: (identifier)
+    type_annotation: (type_annotation
+      (number_type_annotation))
+    right: (identifier)
+    body: (statement_block))
+  (for_in_statement
+    left: (identifier)
+    type_annotation: (type_annotation
+      (string_type_annotation))
+    right: (identifier)
+    body: (statement_block)))
+
+============================================================
+Arrow function bodies
+============================================================
+
+const a = () => ({x: 1});
+const b = () => { label: 1 };
+const c = (x): T => x;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters)
+        body: (parenthesized_expression
+          (object
+            (pair
+              key: (property_identifier)
+              value: (number)))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters)
+        body: (statement_block
+          (labeled_statement
+            label: (statement_identifier)
+            body: (expression_statement
+              (number)))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters
+          (identifier))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (identifier)))))
+
+============================================================
+Parenthesized consequent before an arrow function
+============================================================
+
+a ? (b) : c => (d) : e => f;
+a ? (b): c => d : e;
+
+---
+
+(program
+  (expression_statement
+    (ternary_expression
+      condition: (identifier)
+      consequence: (parenthesized_expression
+        (identifier))
+      alternative: (arrow_function
+        parameter: (identifier)
+        body: (arrow_function
+          parameters: (formal_parameters
+            (identifier))
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (identifier)))))
+  (expression_statement
+    (ternary_expression
+      condition: (identifier)
+      consequence: (arrow_function
+        parameters: (formal_parameters
+          (identifier))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (identifier))
+      alternative: (identifier))))
+
+============================================================
+Declare field named static
+============================================================
+
+class A {
+  declare static
+}
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)))))

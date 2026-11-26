@@ -1,0 +1,953 @@
+============================================================
+Primitive types
+============================================================
+
+type A = any;
+type B = mixed;
+type C = empty;
+type D = void;
+type E = null;
+type F = number;
+type G = string;
+type H = boolean;
+type I = bigint;
+type J = symbol;
+type K = *;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (any_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (mixed_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (empty_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (void_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (null_literal_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (number_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (string_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (boolean_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (big_int_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (symbol_type_annotation))
+  (type_alias
+    id: (identifier)
+    right: (exists_type_annotation)))
+
+============================================================
+Literal types
+============================================================
+
+type A = 'a';
+type B = 42;
+type C = -1;
+type D = 10n;
+type E = true;
+type F = false;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (string_literal_type_annotation
+      (string
+        (string_fragment))))
+  (type_alias
+    id: (identifier)
+    right: (number_literal_type_annotation
+      (number)))
+  (type_alias
+    id: (identifier)
+    right: (number_literal_type_annotation
+      (number)))
+  (type_alias
+    id: (identifier)
+    right: (big_int_literal_type_annotation
+      (number)))
+  (type_alias
+    id: (identifier)
+    right: (boolean_literal_type_annotation
+      (true)))
+  (type_alias
+    id: (identifier)
+    right: (boolean_literal_type_annotation
+      (false))))
+
+============================================================
+Nullable and array types
+============================================================
+
+type A = ?string;
+type B = number[];
+type C = ?number[];
+type D = (?number)[];
+type E = Array<string>;
+type F = $ReadOnlyArray<mixed>;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (nullable_type_annotation
+      type_annotation: (string_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (array_type_annotation
+      element_type: (number_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (nullable_type_annotation
+      type_annotation: (array_type_annotation
+        element_type: (number_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (array_type_annotation
+      element_type: (nullable_type_annotation
+        type_annotation: (number_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (string_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (mixed_type_annotation)))))
+
+============================================================
+Tuple types
+============================================================
+
+type A = [number, string];
+type B = [a: number, b?: string];
+type C = [+x: number, -y: string];
+type D = [...A, ...B];
+type E = [];
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (tuple_type_annotation
+      element_types: (number_type_annotation)
+      element_types: (string_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (tuple_type_annotation
+      element_types: (tuple_type_labeled_element
+        label: (identifier)
+        element_type: (number_type_annotation))
+      element_types: (tuple_type_labeled_element
+        label: (identifier)
+        element_type: (string_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (tuple_type_annotation
+      element_types: (tuple_type_labeled_element
+        variance: (variance)
+        label: (identifier)
+        element_type: (number_type_annotation))
+      element_types: (tuple_type_labeled_element
+        variance: (variance)
+        label: (identifier)
+        element_type: (string_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (tuple_type_annotation
+      element_types: (tuple_type_spread_element
+        type_annotation: (generic_type_annotation
+          id: (identifier)))
+      element_types: (tuple_type_spread_element
+        type_annotation: (generic_type_annotation
+          id: (identifier)))))
+  (type_alias
+    id: (identifier)
+    right: (tuple_type_annotation)))
+
+============================================================
+Union and intersection types
+============================================================
+
+type A = 'a' | 'b' | 'c';
+type B =
+  | {kind: 'x'}
+  | {kind: 'y'};
+type C = A & B;
+type D = & A & B;
+type E = A | B & C;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (union_type_annotation
+      types: (string_literal_type_annotation
+        (string
+          (string_fragment)))
+      types: (string_literal_type_annotation
+        (string
+          (string_fragment)))
+      types: (string_literal_type_annotation
+        (string
+          (string_fragment)))))
+  (type_alias
+    id: (identifier)
+    right: (union_type_annotation
+      types: (object_type_annotation
+        properties: (object_type_property
+          key: (property_identifier)
+          value: (string_literal_type_annotation
+            (string
+              (string_fragment)))))
+      types: (object_type_annotation
+        properties: (object_type_property
+          key: (property_identifier)
+          value: (string_literal_type_annotation
+            (string
+              (string_fragment)))))))
+  (type_alias
+    id: (identifier)
+    right: (intersection_type_annotation
+      types: (generic_type_annotation
+        id: (identifier))
+      types: (generic_type_annotation
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (intersection_type_annotation
+      types: (generic_type_annotation
+        id: (identifier))
+      types: (generic_type_annotation
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (union_type_annotation
+      types: (generic_type_annotation
+        id: (identifier))
+      types: (intersection_type_annotation
+        types: (generic_type_annotation
+          id: (identifier))
+        types: (generic_type_annotation
+          id: (identifier))))))
+
+============================================================
+Function types
+============================================================
+
+type A = (x: number, y?: string) => void;
+type B = (number, string) => boolean;
+type C = (...rest: Array<number>) => void;
+type D = (this: Window, e: Event) => void;
+type E = <T>(x: T) => T;
+type F = string => number;
+type G = () => () => void;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (function_type_annotation
+      params: (function_type_param
+        name: (identifier)
+        type_annotation: (number_type_annotation))
+      params: (function_type_param
+        name: (identifier)
+        type_annotation: (string_type_annotation))
+      return_type: (void_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (function_type_annotation
+      params: (function_type_param
+        type_annotation: (number_type_annotation))
+      params: (function_type_param
+        type_annotation: (string_type_annotation))
+      return_type: (boolean_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (function_type_annotation
+      rest: (function_type_param
+        name: (identifier)
+        type_annotation: (generic_type_annotation
+          id: (identifier)
+          type_parameters: (type_parameter_instantiation
+            params: (number_type_annotation))))
+      return_type: (void_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (function_type_annotation
+      this: (function_type_param
+        type_annotation: (generic_type_annotation
+          id: (identifier)))
+      params: (function_type_param
+        name: (identifier)
+        type_annotation: (generic_type_annotation
+          id: (identifier)))
+      return_type: (void_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (function_type_annotation
+      type_parameters: (type_parameter_declaration
+        params: (type_parameter
+          name: (identifier)))
+      params: (function_type_param
+        name: (identifier)
+        type_annotation: (generic_type_annotation
+          id: (identifier)))
+      return_type: (generic_type_annotation
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (function_type_annotation
+      params: (function_type_param
+        type_annotation: (string_type_annotation))
+      return_type: (number_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (function_type_annotation
+      return_type: (function_type_annotation
+        return_type: (void_type_annotation)))))
+
+============================================================
+Generic and qualified types
+============================================================
+
+type A = Map<string, number>;
+type B = React.Node;
+type C = React.ComponentType<Props>;
+type D = A.B.C<D>;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (string_type_annotation)
+        params: (number_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (qualified_type_identifier
+        qualification: (identifier)
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (qualified_type_identifier
+        qualification: (identifier)
+        id: (identifier))
+      type_parameters: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))))
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (qualified_type_identifier
+        qualification: (qualified_type_identifier
+          qualification: (identifier)
+          id: (identifier))
+        id: (identifier))
+      type_parameters: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier))))))
+
+============================================================
+Typeof and keyof types
+============================================================
+
+type A = typeof x;
+type B = typeof x.y.z;
+type C = keyof O;
+type D = typeof x.default;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (typeof_type_annotation
+      argument: (identifier)))
+  (type_alias
+    id: (identifier)
+    right: (typeof_type_annotation
+      argument: (qualified_typeof_identifier
+        qualification: (qualified_typeof_identifier
+          qualification: (identifier)
+          id: (identifier))
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (keyof_type_annotation
+      argument: (generic_type_annotation
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (typeof_type_annotation
+      argument: (qualified_typeof_identifier
+        qualification: (identifier)
+        id: (identifier)))))
+
+============================================================
+Indexed access types
+============================================================
+
+type A = O['k'];
+type B = O[number];
+type C = O?.['a'];
+type D = O?.['a']['b'];
+type E = Array<string>[number];
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (indexed_access_type
+      object_type: (generic_type_annotation
+        id: (identifier))
+      index_type: (string_literal_type_annotation
+        (string
+          (string_fragment)))))
+  (type_alias
+    id: (identifier)
+    right: (indexed_access_type
+      object_type: (generic_type_annotation
+        id: (identifier))
+      index_type: (number_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (optional_indexed_access_type
+      object_type: (generic_type_annotation
+        id: (identifier))
+      index_type: (string_literal_type_annotation
+        (string
+          (string_fragment)))))
+  (type_alias
+    id: (identifier)
+    right: (optional_indexed_access_type
+      object_type: (optional_indexed_access_type
+        object_type: (generic_type_annotation
+          id: (identifier))
+        index_type: (string_literal_type_annotation
+          (string
+            (string_fragment))))
+      index_type: (string_literal_type_annotation
+        (string
+          (string_fragment)))))
+  (type_alias
+    id: (identifier)
+    right: (indexed_access_type
+      object_type: (generic_type_annotation
+        id: (identifier)
+        type_parameters: (type_parameter_instantiation
+          params: (string_type_annotation)))
+      index_type: (number_type_annotation))))
+
+============================================================
+Conditional types
+============================================================
+
+type A = T extends string ? 'yes' : 'no';
+type B = T extends Array<infer E> ? E : empty;
+type C = T extends Array<infer E extends string> ? E : empty;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (conditional_type_annotation
+      check_type: (generic_type_annotation
+        id: (identifier))
+      extends_type: (string_type_annotation)
+      true_type: (string_literal_type_annotation
+        (string
+          (string_fragment)))
+      false_type: (string_literal_type_annotation
+        (string
+          (string_fragment)))))
+  (type_alias
+    id: (identifier)
+    right: (conditional_type_annotation
+      check_type: (generic_type_annotation
+        id: (identifier))
+      extends_type: (generic_type_annotation
+        id: (identifier)
+        type_parameters: (type_parameter_instantiation
+          params: (infer_type_annotation
+            type_parameter: (type_parameter
+              name: (identifier)))))
+      true_type: (generic_type_annotation
+        id: (identifier))
+      false_type: (empty_type_annotation)))
+  (type_alias
+    id: (identifier)
+    right: (conditional_type_annotation
+      check_type: (generic_type_annotation
+        id: (identifier))
+      extends_type: (generic_type_annotation
+        id: (identifier)
+        type_parameters: (type_parameter_instantiation
+          params: (infer_type_annotation
+            type_parameter: (type_parameter
+              name: (identifier)
+              bound: (string_type_annotation)))))
+      true_type: (generic_type_annotation
+        id: (identifier))
+      false_type: (empty_type_annotation))))
+
+============================================================
+Type guards
+============================================================
+
+function isString(x: mixed): x is string {
+  return typeof x === 'string';
+}
+function check(x: mixed): implies x is number {
+  return typeof x === 'number';
+}
+declare function f(x: mixed): x is string;
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (mixed_type_annotation)))
+    return_type: (type_annotation
+      (type_predicate
+        parameter_name: (identifier)
+        type_annotation: (string_type_annotation)))
+    body: (statement_block
+      (return_statement
+        (binary_expression
+          left: (unary_expression
+            argument: (identifier))
+          right: (string
+            (string_fragment))))))
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (mixed_type_annotation)))
+    return_type: (type_annotation
+      (type_predicate
+        parameter_name: (identifier)
+        type_annotation: (number_type_annotation)))
+    body: (statement_block
+      (return_statement
+        (binary_expression
+          left: (unary_expression
+            argument: (identifier))
+          right: (string
+            (string_fragment))))))
+  (declare_function
+    id: (identifier)
+    type_annotation: (type_annotation
+      (function_type_annotation
+        params: (function_type_param
+          name: (identifier)
+          type_annotation: (mixed_type_annotation))
+        return_type: (type_predicate
+          parameter_name: (identifier)
+          type_annotation: (string_type_annotation))))))
+
+============================================================
+Object types
+============================================================
+
+type A = {a: number, b?: string};
+type B = {|a: number|};
+type C = {a: number, ...};
+type D = {...A, c: boolean};
+type E = {[key: string]: number};
+type F = {[string]: number};
+type G = {(): void, (x: number): string};
+type H = {+readOnly: number, -writeOnly: string};
+type I = {m(): void, get x(): number, set x(v: number): void};
+type J = {[[foo]]: T, [[bar]](): void};
+type K = {'quoted': number, 42: string};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (string_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_spread_property
+        argument: (generic_type_annotation
+          id: (identifier)))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (boolean_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      indexers: (object_type_indexer
+        id: (identifier)
+        key: (string_type_annotation)
+        value: (number_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      indexers: (object_type_indexer
+        key: (string_type_annotation)
+        value: (number_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      call_properties: (object_type_call_property
+        value: (function_type_annotation
+          return_type: (void_type_annotation)))
+      call_properties: (object_type_call_property
+        value: (function_type_annotation
+          params: (function_type_param
+            name: (identifier)
+            type_annotation: (number_type_annotation))
+          return_type: (string_type_annotation)))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        variance: (variance)
+        key: (property_identifier)
+        value: (number_type_annotation))
+      properties: (object_type_property
+        variance: (variance)
+        key: (property_identifier)
+        value: (string_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation)))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (number_type_annotation)))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          params: (function_type_param
+            name: (identifier)
+            type_annotation: (number_type_annotation))
+          return_type: (void_type_annotation)))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      internal_slots: (object_type_internal_slot
+        id: (identifier)
+        value: (generic_type_annotation
+          id: (identifier)))
+      internal_slots: (object_type_internal_slot
+        id: (identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation)))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (string
+          (string_fragment))
+        value: (number_type_annotation))
+      properties: (object_type_property
+        key: (number)
+        value: (string_type_annotation)))))
+
+============================================================
+Object types with semicolons
+============================================================
+
+type A = {
+  a: number;
+  b: string;
+};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (string_type_annotation)))))
+
+============================================================
+Mapped types
+============================================================
+
+type A = {[K in keyof O]: O[K]};
+type B = {+[K in keyof O]?: O[K]};
+type C = {-[K in Keys]: string};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_mapped_type_property
+        key_tparam: (type_parameter
+          name: (identifier))
+        source_type: (keyof_type_annotation
+          argument: (generic_type_annotation
+            id: (identifier)))
+        prop_type: (indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (generic_type_annotation
+            id: (identifier))))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_mapped_type_property
+        variance: (variance)
+        key_tparam: (type_parameter
+          name: (identifier))
+        source_type: (keyof_type_annotation
+          argument: (generic_type_annotation
+            id: (identifier)))
+        prop_type: (indexed_access_type
+          object_type: (generic_type_annotation
+            id: (identifier))
+          index_type: (generic_type_annotation
+            id: (identifier))))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_mapped_type_property
+        variance: (variance)
+        key_tparam: (type_parameter
+          name: (identifier))
+        source_type: (generic_type_annotation
+          id: (identifier))
+        prop_type: (string_type_annotation)))))
+
+============================================================
+Inline interface types
+============================================================
+
+type A = interface {m(): void};
+type B = interface extends C {};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (interface_type_annotation
+      body: (object_type_annotation
+        properties: (object_type_property
+          key: (property_identifier)
+          value: (function_type_annotation
+            return_type: (void_type_annotation))))))
+  (type_alias
+    id: (identifier)
+    right: (interface_type_annotation
+      extends: (interface_extends
+        id: (identifier))
+      body: (object_type_annotation))))
+
+============================================================
+Type operators
+============================================================
+
+type A = $ReadOnly<{a: number}>;
+type B = Class<C>;
+type C = $Keys<O>;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (object_type_annotation
+          properties: (object_type_property
+            key: (property_identifier)
+            value: (number_type_annotation))))))
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))))
+  (type_alias
+    id: (identifier)
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier))))))
+
+============================================================
+Static is a key outside declared classes
+============================================================
+
+interface I {
+  static (): void;
+  static(): string;
+  static: number;
+}
+type O = {static (): void};
+
+---
+
+(program
+  (interface_declaration
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation)))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (string_type_annotation)))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation))))
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation))))))
+
+============================================================
+Static call properties in declared classes
+============================================================
+
+declare class C {
+  static (): C;
+  static(): void;
+  static x: number;
+}
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      call_properties: (object_type_call_property
+        value: (function_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier))))
+      call_properties: (object_type_call_property
+        value: (function_type_annotation
+          return_type: (void_type_annotation)))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation)))))
+
+============================================================
+Array types end at a line break
+============================================================
+
+var a: number
+[]
+type A = number
+[]
+var b: number[];
+type B = T[K];
+type C = T?.[K];
+
+---
+
+(program
+  (variable_declaration
+    (variable_declarator
+      name: (identifier)
+      type_annotation: (type_annotation
+        (number_type_annotation))))
+  (expression_statement
+    (array))
+  (type_alias
+    id: (identifier)
+    right: (number_type_annotation))
+  (expression_statement
+    (array))
+  (variable_declaration
+    (variable_declarator
+      name: (identifier)
+      type_annotation: (type_annotation
+        (array_type_annotation
+          element_type: (number_type_annotation)))))
+  (type_alias
+    id: (identifier)
+    right: (indexed_access_type
+      object_type: (generic_type_annotation
+        id: (identifier))
+      index_type: (generic_type_annotation
+        id: (identifier))))
+  (type_alias
+    id: (identifier)
+    right: (optional_indexed_access_type
+      object_type: (generic_type_annotation
+        id: (identifier))
+      index_type: (generic_type_annotation
+        id: (identifier)))))

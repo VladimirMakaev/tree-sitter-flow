@@ -1,0 +1,432 @@
+============================================================
+Type aliases
+============================================================
+
+type A = number;
+type B<T> = Array<T>;
+export type C = string;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (number_type_annotation))
+  (type_alias
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    right: (generic_type_annotation
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))))
+  (export_statement
+    declaration: (type_alias
+      id: (identifier)
+      right: (string_type_annotation))))
+
+============================================================
+Opaque types
+============================================================
+
+opaque type A = string;
+opaque type B: string = string;
+export opaque type C<T>: Super<T> = Impl<T>;
+
+---
+
+(program
+  (opaque_type
+    id: (identifier)
+    impltype: (string_type_annotation))
+  (opaque_type
+    id: (identifier)
+    supertype: (string_type_annotation)
+    impltype: (string_type_annotation))
+  (export_statement
+    declaration: (opaque_type
+      id: (identifier)
+      type_parameters: (type_parameter_declaration
+        params: (type_parameter
+          name: (identifier)))
+      supertype: (generic_type_annotation
+        id: (identifier)
+        type_parameters: (type_parameter_instantiation
+          params: (generic_type_annotation
+            id: (identifier))))
+      impltype: (generic_type_annotation
+        id: (identifier)
+        type_parameters: (type_parameter_instantiation
+          params: (generic_type_annotation
+            id: (identifier)))))))
+
+============================================================
+Interfaces
+============================================================
+
+interface A {
+  m(): void;
+  p: number;
+}
+interface B<T> extends A, C<T> {}
+export interface D {}
+
+---
+
+(program
+  (interface_declaration
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation)))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation))))
+  (interface_declaration
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    extends: (interface_extends
+      id: (identifier))
+    extends: (interface_extends
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier))))
+    body: (object_type_annotation))
+  (export_statement
+    declaration: (interface_declaration
+      id: (identifier)
+      body: (object_type_annotation))))
+
+============================================================
+Declare variables and functions
+============================================================
+
+declare var a: number;
+declare let b: string;
+declare const c: boolean;
+declare function f(x: number): string;
+declare function g<T>(x: T): T;
+declare function h(x: mixed): boolean %checks(typeof x === 'string');
+
+---
+
+(program
+  (declare_variable
+    id: (identifier)
+    type_annotation: (type_annotation
+      (number_type_annotation)))
+  (declare_variable
+    id: (identifier)
+    type_annotation: (type_annotation
+      (string_type_annotation)))
+  (declare_variable
+    id: (identifier)
+    type_annotation: (type_annotation
+      (boolean_type_annotation)))
+  (declare_function
+    id: (identifier)
+    type_annotation: (type_annotation
+      (function_type_annotation
+        params: (function_type_param
+          name: (identifier)
+          type_annotation: (number_type_annotation))
+        return_type: (string_type_annotation))))
+  (declare_function
+    id: (identifier)
+    type_annotation: (type_annotation
+      (function_type_annotation
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        params: (function_type_param
+          name: (identifier)
+          type_annotation: (generic_type_annotation
+            id: (identifier)))
+        return_type: (generic_type_annotation
+          id: (identifier)))))
+  (declare_function
+    id: (identifier)
+    type_annotation: (type_annotation
+      (function_type_annotation
+        params: (function_type_param
+          name: (identifier)
+          type_annotation: (mixed_type_annotation))
+        return_type: (boolean_type_annotation)))
+    predicate: (declared_predicate
+      value: (binary_expression
+        left: (unary_expression
+          argument: (identifier))
+        right: (string
+          (string_fragment))))))
+
+============================================================
+Declare classes
+============================================================
+
+declare class A<T> extends B<T> mixins C implements D {
+  static s: number;
+  m(): void;
+  static (): A<T>;
+  constructor(): void;
+  proto p: string;
+}
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    extends: (interface_extends
+      id: (identifier)
+      type_parameters: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier))))
+    mixins: (interface_extends
+      id: (identifier))
+    implements: (class_implements
+      id: (identifier))
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation)))
+      call_properties: (object_type_call_property
+        value: (function_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier)
+            type_parameters: (type_parameter_instantiation
+              params: (generic_type_annotation
+                id: (identifier))))))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation)))
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (string_type_annotation)))))
+
+============================================================
+Declare modules
+============================================================
+
+declare module 'm' {
+  declare module.exports: {f(): void};
+}
+declare module M {
+  declare export function f(): void;
+  declare export default class A {}
+  declare export var x: number;
+  declare export * from 'other';
+  declare export {a, b as c} from 'other';
+}
+
+---
+
+(program
+  (declare_module
+    id: (string
+      (string_fragment))
+    body: (statement_block
+      (declare_module_exports
+        type_annotation: (type_annotation
+          (object_type_annotation
+            properties: (object_type_property
+              key: (property_identifier)
+              value: (function_type_annotation
+                return_type: (void_type_annotation))))))))
+  (declare_module
+    id: (identifier)
+    body: (statement_block
+      (declare_export_declaration
+        declaration: (declare_function
+          id: (identifier)
+          type_annotation: (type_annotation
+            (function_type_annotation
+              return_type: (void_type_annotation)))))
+      (declare_export_declaration
+        declaration: (declare_class
+          id: (identifier)
+          body: (object_type_annotation)))
+      (declare_export_declaration
+        declaration: (declare_variable
+          id: (identifier)
+          type_annotation: (type_annotation
+            (number_type_annotation))))
+      (declare_export_all_declaration
+        source: (string
+          (string_fragment)))
+      (declare_export_declaration
+        (export_clause
+          (export_specifier
+            name: (identifier))
+          (export_specifier
+            name: (identifier)
+            alias: (identifier)))
+        source: (string
+          (string_fragment))))))
+
+============================================================
+Declare type, opaque type and interface
+============================================================
+
+declare type A = number;
+declare opaque type B;
+declare opaque type C: string;
+declare interface D {}
+declare export type E = string;
+declare export interface F {}
+declare export opaque type G;
+
+---
+
+(program
+  (declare_type_alias
+    id: (identifier)
+    right: (number_type_annotation))
+  (declare_opaque_type
+    id: (identifier))
+  (declare_opaque_type
+    id: (identifier)
+    supertype: (string_type_annotation))
+  (declare_interface
+    id: (identifier)
+    body: (object_type_annotation))
+  (declare_export_declaration
+    declaration: (type_alias
+      id: (identifier)
+      right: (string_type_annotation)))
+  (declare_export_declaration
+    declaration: (interface_declaration
+      id: (identifier)
+      body: (object_type_annotation)))
+  (declare_export_declaration
+    declaration: (declare_opaque_type
+      id: (identifier))))
+
+============================================================
+Declare namespace
+============================================================
+
+declare namespace NS {
+  declare var x: number;
+  declare function f(): void;
+}
+
+---
+
+(program
+  (declare_namespace
+    id: (identifier)
+    body: (statement_block
+      (declare_variable
+        id: (identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation)))
+      (declare_function
+        id: (identifier)
+        type_annotation: (type_annotation
+          (function_type_annotation
+            return_type: (void_type_annotation)))))))
+
+============================================================
+Declare export default types
+============================================================
+
+declare export default string;
+declare export default (x: number) => void;
+
+---
+
+(program
+  (declare_export_declaration
+    declaration: (string_type_annotation))
+  (declare_export_declaration
+    declaration: (function_type_annotation
+      params: (function_type_param
+        name: (identifier)
+        type_annotation: (number_type_annotation))
+      return_type: (void_type_annotation))))
+
+============================================================
+Type imports and exports
+============================================================
+
+import type A from 'a';
+import type {B, C as D} from 'b';
+import typeof E from 'e';
+import {type F, typeof G, H} from 'h';
+import type * as NS from 'ns';
+export type {A, B};
+export type {C} from 'c';
+export * as ns from 'm';
+
+---
+
+(program
+  (import_statement
+    (import_clause
+      (identifier))
+    source: (string
+      (string_fragment)))
+  (import_statement
+    (import_clause
+      (named_imports
+        (import_specifier
+          name: (identifier))
+        (import_specifier
+          name: (identifier)
+          alias: (identifier))))
+    source: (string
+      (string_fragment)))
+  (import_statement
+    (import_clause
+      (identifier))
+    source: (string
+      (string_fragment)))
+  (import_statement
+    (import_clause
+      (named_imports
+        (import_specifier
+          name: (identifier))
+        (import_specifier
+          name: (identifier))
+        (import_specifier
+          name: (identifier))))
+    source: (string
+      (string_fragment)))
+  (import_statement
+    (import_clause
+      (namespace_import
+        (identifier)))
+    source: (string
+      (string_fragment)))
+  (export_statement
+    (export_clause
+      (export_specifier
+        name: (identifier))
+      (export_specifier
+        name: (identifier))))
+  (export_statement
+    (export_clause
+      (export_specifier
+        name: (identifier)))
+    source: (string
+      (string_fragment)))
+  (export_statement
+    (namespace_export
+      (identifier))
+    source: (string
+      (string_fragment))))
