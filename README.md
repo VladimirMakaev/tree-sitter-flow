@@ -9,8 +9,9 @@ It extends [tree-sitter-javascript](https://github.com/tree-sitter/tree-sitter-j
 the way [tree-sitter-typescript](https://github.com/tree-sitter/tree-sitter-typescript)
 does: every JavaScript node keeps its tree-sitter-javascript name and shape,
 and Flow nodes are named after [Hermes](https://github.com/facebook/hermes)'
-ESTree nodes. The generated parser uses ABI 14, so it loads in every runtime
-that supports ABI 14, including tree-sitter 0.27.x.
+ESTree nodes. The parser is generated with tree-sitter CLI 0.27.2 at its
+native ABI 15, so it loads in tree-sitter runtimes 0.25 and later, for example
+ast-grep 0.51, Neovim 0.11 and py-tree-sitter 0.25 and later.
 
 ## Supported syntax
 
@@ -395,6 +396,9 @@ ast-grep run --custom-languages allow -l flow -p '($E: any)'
 
 ### Node
 
+The Node binding works with the npm `tree-sitter` package 0.25.1, the newest
+Node binding of tree-sitter that is available.
+
 ```js
 import Parser from 'tree-sitter';
 import Flow from 'tree-sitter-flow';
@@ -421,6 +425,26 @@ from tree_sitter import Language, Parser
 parser = Parser(Language(tree_sitter_flow.language()))
 tree = parser.parse(b"type A = ?string;")
 ```
+
+### Runtime versions
+
+| Binding | tree-sitter runtime |
+| --- | --- |
+| C | 0.27.2 (tested in CI) |
+| Rust | `tree-sitter` crate 0.27.2 (dev-dependency) |
+| Python | `tree-sitter~=0.27` (the `core` extra; CI tests 0.27.0) |
+| Node | `tree-sitter` 0.25.1, the newest npm release |
+| Go | `go-tree-sitter` v0.24.0, the newest release |
+| Swift | `swift-tree-sitter` 0.25.0, the newest release |
+
+`node script/check-versions.mjs` fails in CI when any of these pins, the CLI
+version or the ABI drifts.
+
+Keywords stay contextual: a JavaScript keyword reads as an identifier wherever
+the keyword itself is not valid, so `a?.default` and `<A default />` parse.
+`grammar.js` replaces tree-sitter-javascript's reserved-word sets with empty
+ones for that reason; in this grammar's ABI 15 parse table they would reserve
+the keywords after `?.` and in JSX attributes.
 
 ### Queries
 
@@ -515,24 +539,24 @@ with the tree-sitter 0.27.2 runtime.
 
 ### Performance
 
-Parsing the 5755 real-code files above (33.5 MB) takes 4.11 s with
-tree-sitter-flow and 17.09 s with tree-sitter-javascript, which spends most of
+Parsing the 5755 real-code files above (33.5 MB) takes 4.21 s with
+tree-sitter-flow and 17.04 s with tree-sitter-javascript, which spends most of
 its time recovering from Flow syntax errors (6.5 s on one file). Parse time is
 linear: each of the 10 slowest files, repeated 8 times, takes 7.7 to 8.1 times
 as long.
 
 | File | Bytes | ms | 8x / 1x |
 | --- | ---: | ---: | ---: |
-| react/packages/react-server/src/ReactFlightServer.js | 272123 | 28.60 | 7.88 |
-| react-native/packages/react-native/flow/dom.js.flow | 194764 | 27.66 | 8.06 |
-| react-native/flow-typed/environment/node.js | 174456 | 27.20 | 8.01 |
-| react/packages/react-devtools-shared/src/backend/fiber/renderer.js | 290563 | 26.60 | 8.12 |
-| react-native/flow-typed/npm/babel-types_v7.x.x.js | 241584 | 26.41 | 7.95 |
-| react/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js | 244327 | 24.87 | 7.73 |
-| react/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js | 239852 | 23.70 | 7.81 |
-| react/packages/react-client/src/ReactFlightClient.js | 205375 | 22.76 | 7.89 |
-| react/packages/react-server/src/ReactFizzServer.js | 234497 | 21.97 | 7.90 |
-| react-native/packages/react-native/src/private/webapis/intersectionobserver/\_\_tests\_\_/IntersectionObserver-itest.js | 164221 | 20.84 | 7.94 |
+| react/packages/react-server/src/ReactFlightServer.js | 272123 | 30.15 | 7.86 |
+| react-native/flow-typed/environment/node.js | 174456 | 27.64 | 7.91 |
+| react-native/packages/react-native/flow/dom.js.flow | 194764 | 27.48 | 7.69 |
+| react-native/flow-typed/npm/babel-types_v7.x.x.js | 241584 | 27.22 | 8.05 |
+| react/packages/react-devtools-shared/src/backend/fiber/renderer.js | 290563 | 26.39 | 7.74 |
+| react/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js | 244327 | 25.57 | 7.89 |
+| react/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js | 239852 | 23.61 | 7.86 |
+| react/packages/react-client/src/ReactFlightClient.js | 205375 | 23.18 | 7.81 |
+| react/packages/react-server/src/ReactFizzServer.js | 234497 | 22.97 | 7.93 |
+| react-native/packages/react-native/src/private/webapis/intersectionobserver/\_\_tests\_\_/IntersectionObserver-itest.js | 164221 | 20.86 | 8.10 |
 
 ### Running the tests
 
@@ -566,8 +590,8 @@ Fetched by [`script/fetch-suites.sh`](script/fetch-suites.sh), never vendored:
 
 | Job | Checks |
 | --- | --- |
-| Generated parser is up to date | `tree-sitter generate --abi=14` leaves `src/` unchanged; versions agree |
-| Tests and bindings | `tree-sitter test`; Node, Rust, Python, Go, C (CMake) on Linux, macOS, Windows; Swift on macOS |
+| Generated parser is up to date | `tree-sitter generate` (CLI 0.27.2, ABI 15) leaves `src/` unchanged; package version, CLI, runtime and ABI pins agree |
+| Tests and bindings | `tree-sitter test`; Node, Rust, Python (py-tree-sitter 0.27), Go, C (CMake, runtime 0.27.2) on Linux, macOS, Windows; Swift on macOS |
 | Rust crate | `cargo package --locked`, tests of the packaged crate, `cargo publish --dry-run` |
 | Parse rate on public suites | every Flow-accepted file parses clean, naming check, linear parse time |
 | tree-sitter-javascript corpus | no JavaScript regressions |
@@ -577,23 +601,51 @@ The Hermes comparison job is meant to be a required check for `main`.
 
 ## Releasing
 
-1. Bump the version in every file that carries it (`package.json`,
-   `tree-sitter.json`, `Cargo.toml`, `pyproject.toml`, `CMakeLists.txt`,
-   `Makefile`), then refresh `Cargo.lock`:
-   ```sh
-   tree-sitter version 0.2.0
-   cargo update -p tree-sitter-flow
-   ```
-   CI fails when the versions differ (`node script/check-versions.mjs`).
-2. Commit, tag and push the tag:
-   ```sh
-   git commit -am "Release 0.2.0"
-   git tag v0.2.0
-   git push origin main v0.2.0
-   ```
-3. [`publish.yml`](.github/workflows/publish.yml) publishes the crate to
-   crates.io from the tag, in the `crates` environment, with the
-   `CARGO_REGISTRY_TOKEN` secret.
+The version lives in `package.json`, `package-lock.json`, `tree-sitter.json`,
+`Cargo.toml`, `Cargo.lock`, `pyproject.toml`, `CMakeLists.txt` and `Makefile`;
+CI fails when they differ (`node script/check-versions.mjs`).
+
+**A. From GitHub.** Actions → Release → Run workflow, and enter the version
+without a `v` (for example `0.2.0`).
+[`release.yml`](.github/workflows/release.yml) checks that the version is
+semver, greater than the current one and not tagged yet, then:
+
+1. runs `tree-sitter version <x>`, `cargo update -p tree-sitter-flow` and
+   `npm install --package-lock-only --ignore-scripts`;
+2. checks the versions, that the generated parser is up to date and
+   `tree-sitter test`;
+3. commits "Release v<x>" as `github-actions[bot]`, creates the annotated tag
+   `v<x>`, pushes both to `main` and creates the GitHub release with generated
+   notes;
+4. publishes the crate to crates.io from the tag, in the `crates` environment,
+   with the `CARGO_REGISTRY_TOKEN` secret.
+
+With `dry-run` checked, it does steps 1 and 2, makes the commit and the tag
+locally and prints the commit, but pushes, releases and publishes nothing.
+
+**B. By hand.**
+
+```sh
+tree-sitter version 0.2.0
+cargo update -p tree-sitter-flow
+npm install --package-lock-only --ignore-scripts
+git commit -am "Release v0.2.0"
+git tag -a v0.2.0 -m "Release v0.2.0"
+git push origin main v0.2.0
+```
+
+Pushing the tag starts [`publish.yml`](.github/workflows/publish.yml), which
+checks that the tag matches the crate version and publishes the crate. Tags
+pushed by the Release workflow do not start it, since GitHub does not start
+workflows for pushes made with `GITHUB_TOKEN`; that workflow publishes the
+crate itself. Both skip a version that is already on crates.io, so a version
+is never published twice.
+
+**Branch protection.** The Release workflow pushes its commit straight to
+`main`. If `main` gets branch protection, allow `github-actions[bot]` to bypass
+it, or have the workflow open a pull request with a GitHub App or a
+fine-grained token instead: pull requests opened with `GITHUB_TOKEN` do not
+run CI.
 
 ## License
 
