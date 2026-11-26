@@ -1,0 +1,182 @@
+============================================================
+Bare ampersand in a double-quoted JSX attribute
+============================================================
+
+<A b="x&y" />;
+
+---
+
+(program
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)
+      attribute: (jsx_attribute
+        (property_identifier)
+        (string
+          (string_fragment)
+          (string_fragment)
+          (string_fragment))))))
+
+============================================================
+Bare ampersand in a single-quoted JSX attribute
+============================================================
+
+<A b='x&y' />;
+
+---
+
+(program
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)
+      attribute: (jsx_attribute
+        (property_identifier)
+        (string
+          (string_fragment)
+          (string_fragment)
+          (string_fragment))))))
+
+============================================================
+Bare ampersand in a multi-line JSX attribute
+============================================================
+
+<A b="x
+y&z">c</A>;
+
+---
+
+(program
+  (expression_statement
+    (jsx_element
+      open_tag: (jsx_opening_element
+        name: (identifier)
+        attribute: (jsx_attribute
+          (property_identifier)
+          (string
+            (string_fragment)
+            (string_fragment)
+            (string_fragment))))
+      (jsx_text)
+      close_tag: (jsx_closing_element
+        name: (identifier)))))
+
+============================================================
+Lone ampersand as a JSX attribute value
+============================================================
+
+<A b="&" />;
+
+---
+
+(program
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)
+      attribute: (jsx_attribute
+        (property_identifier)
+        (string
+          (string_fragment))))))
+
+============================================================
+Character references in JSX attributes
+============================================================
+
+<A b="&amp;" c="a&#x41;b" d="&#65;" e="a & b" />;
+
+---
+
+(program
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier)
+      attribute: (jsx_attribute
+        (property_identifier)
+        (string
+          (html_character_reference)))
+      attribute: (jsx_attribute
+        (property_identifier)
+        (string
+          (string_fragment)
+          (html_character_reference)
+          (string_fragment)))
+      attribute: (jsx_attribute
+        (property_identifier)
+        (string
+          (html_character_reference)))
+      attribute: (jsx_attribute
+        (property_identifier)
+        (string
+          (string_fragment))))))
+
+============================================================
+Contextual keyword source as a JSX element name
+============================================================
+
+<source />;
+
+---
+
+(program
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier))))
+
+============================================================
+Contextual keyword type as a JSX element name
+============================================================
+
+<type></type>;
+
+---
+
+(program
+  (expression_statement
+    (jsx_element
+      open_tag: (jsx_opening_element
+        name: (identifier))
+      close_tag: (jsx_closing_element
+        name: (identifier)))))
+
+============================================================
+Contextual keyword defer as a JSX element name
+============================================================
+
+<defer />;
+
+---
+
+(program
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier))))
+
+============================================================
+Contextual keyword of as a JSX element name
+============================================================
+
+<of />;
+
+---
+
+(program
+  (expression_statement
+    (jsx_self_closing_element
+      name: (identifier))))
+
+============================================================
+JSX element whose text looks like an arrow function
+============================================================
+
+(<T>() => 3</T>);
+
+---
+
+(program
+  (expression_statement
+    (parenthesized_expression
+      (jsx_element
+        open_tag: (jsx_opening_element
+          name: (identifier))
+        (jsx_text)
+        close_tag: (jsx_closing_element
+          name: (identifier))))))

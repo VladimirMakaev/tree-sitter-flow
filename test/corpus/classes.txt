@@ -1,0 +1,175 @@
+============================================================
+Default-exported abstract class expression
+============================================================
+
+export default abstract class {}
+
+---
+
+(program
+  (export_statement
+    value: (class
+      body: (class_body))))
+
+============================================================
+Abstract class expression
+============================================================
+
+const A = abstract class {};
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (class
+        body: (class_body)))))
+
+============================================================
+Abstract override method
+============================================================
+
+abstract class A { abstract override b(): void }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (abstract_method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        return_type: (type_annotation
+          (void_type_annotation))))))
+
+============================================================
+Class field followed by a comment and a method on the same line
+============================================================
+
+class C { a = 1 /* b */ c() {} }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (number))
+      (comment)
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block)))))
+
+============================================================
+Typed class field followed by a method on the same line
+============================================================
+
+class C { a: number b(): void {} }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (number_type_annotation)))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        return_type: (type_annotation
+          (void_type_annotation))
+        body: (statement_block)))))
+
+============================================================
+Class field named get before a generator method
+============================================================
+
+class A { get
+  *a() {} }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block)))))
+
+============================================================
+Class field named set before a generator method
+============================================================
+
+class A { set
+  *a(b) {} }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters
+          (identifier))
+        body: (statement_block)))))
+
+============================================================
+Async and static generator methods
+============================================================
+
+class C { async *a() {} static *b() {} }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block)))))
+
+============================================================
+implies type guard returned by a function type in a class property
+============================================================
+
+class A { b: (c: mixed) => implies c is D; }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (function_type_annotation
+            params: (function_type_param
+              name: (identifier)
+              type_annotation: (mixed_type_annotation))
+            return_type: (type_predicate
+              parameter_name: (identifier)
+              type_annotation: (generic_type_annotation
+                id: (identifier)))))))))

@@ -183,6 +183,7 @@ export const TREE_SITTER_ONLY = {
   satisfies_expression: 'Flow parser node (SatisfiesExpression)',
   non_null_expression: 'Flow parser node (NonNullExpression) for `x!`',
   parameter_property: 'Flow parser node (ParameterProperty) for `constructor(private x)`',
+  constructor_type_annotation: 'Flow parser node (ConstructorTypeAnnotation) for `new () => T`',
 };
 
 

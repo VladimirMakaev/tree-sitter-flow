@@ -44,6 +44,8 @@ const CONTEXTUAL_KEYWORDS = [
   'source',
   'require',
   'out',
+  'using',
+  'as',
 ];
 
 // Words that are keywords inside types and that may still name a
@@ -81,6 +83,9 @@ export default grammar(JavaScript, {
     $._class_field_separator,
     $._match_lbrace,
     $._type_lbracket,
+    $._type_parameters_open,
+    $._component_type_parameters_open,
+    $._field_name_separator,
   ]),
 
   precedences: ($, previous) => previous.concat([
@@ -105,6 +110,19 @@ export default grammar(JavaScript, {
   // Two of tree-sitter-javascript's conflicts do not arise in this grammar.
   conflicts: ($, previous) => previous.filter(c => !isConflict(c, ['primary_expression', 'method_definition']) &&
     !isConflict(c, ['variable_declarator', '_for_header'])).concat([
+    [$.import_specifier, $._import_identifier],
+    [$._declare_class_bare_property, $.object_type_property, $.object_type_indexer, $.object_type_internal_slot],
+    [$._declare_class_bare_property, $.object_type_property],
+    [$.field_definition, $._separated_field_definition, $._bare_field_definition, $.abstract_property_definition, $._method_modifiers, $.abstract_method_definition],
+    [$.object_type_property, $.variance],
+    [$.object_type_property, $.object_type_mapped_type_property, $.variance],
+    [$.jsx_namespace_name, $.type_operator],
+    [$.jsx_namespace_name, $._renders_operator],
+    [$.jsx_namespace_name, $.generic_type_annotation, $.hook_type_annotation],
+    [$.jsx_namespace_name, $.generic_type_annotation, $.component_type_annotation],
+    [$.jsx_namespace_name, $.interface_type_annotation],
+    [$.jsx_opening_element, $.jsx_self_closing_element, $._type_parameter_variance],
+    [$.using_declaration, $.primary_expression],
     [$.object_type_property, $._static_call_property],
     [$.primary_expression, $.ternary_expression],
     [$.statement, $.match_statement_case],
@@ -113,7 +131,6 @@ export default grammar(JavaScript, {
     [$.type_operator, $._qualified_id, $._component_type_parameter_body],
     [$._renders_operator, $._qualified_id, $._component_type_parameter_body],
     [$._qualified_id, $._component_type_parameter_body],
-    [$.field_definition, $._typed_field_definition, $.abstract_property_definition, $._method_modifiers, $.abstract_method_definition],
     [$.type_operator, $._type_parameter_variance],
     [$.generic_type_annotation, $.type_parameter],
     [$._qualified_id, $.object_type_indexer],
@@ -158,7 +175,6 @@ export default grammar(JavaScript, {
     [$.generic_type_annotation, $._qualified_id],
     [$._parenthesized_type, $.function_type_param],
     [$.object_type_property, $.object_type_indexer, $.object_type_internal_slot],
-    [$.object_type_mapped_type_property, $.variance],
     [$.jsx_namespace_name, $.generic_type_annotation],
     [$._anon_function_type, $._anon_function_param],
     [$._predicate_parameter, $.type_operator],
@@ -330,9 +346,21 @@ export default grammar(JavaScript, {
     _declare_function: $ => seq(
       'function',
       field('id', $.identifier),
-      field('type_annotation', $._declared_function_type),
-      optional(field('predicate', $._predicate)),
+      choice(
+        seq(
+          field('type_annotation', $._declared_function_type),
+          optional(field('predicate', $._predicate)),
+        ),
+        seq(
+          field('type_annotation', alias($._declared_predicate_function_type, $.type_annotation)),
+          field('predicate', $._predicate),
+        ),
+      ),
       $._semicolon_or_signature,
+    ),
+    _declared_predicate_function_type: $ => alias(
+      $._function_type_signature_without_return,
+      $.function_type_annotation,
     ),
 
     declare_hook: $ => seq('declare', $._declare_hook),
@@ -365,7 +393,8 @@ export default grammar(JavaScript, {
     _declare_variable: $ => seq(
       field('kind', choice('var', 'let', 'const')),
       commaSep1(seq(
-        field('id', $.identifier),
+        // Flow's parser also takes a pattern: `declare const [] = x;`.
+        field('id', choice($.identifier, $._destructuring_pattern)),
         optional(field('type_annotation', $.type_annotation)),
         optional(seq('=', field('init', $.expression))),
       )),
@@ -555,7 +584,7 @@ export default grammar(JavaScript, {
       optional(seq(
         commaSep1(choice(
           field('params', $.component_parameter),
-          seq(field('params', $.rest_pattern), optional(field('type_annotation', $.type_annotation))),
+          seq(field('params', $.rest_pattern), optional('?'), optional(field('type_annotation', $.type_annotation))),
         )),
         optional(','),
       )),
@@ -861,9 +890,13 @@ export default grammar(JavaScript, {
       seq(
         optional(field('import_kind', choice('type', 'typeof'))),
         choice(
-          field('name', $._import_identifier),
+          field('name', choice($._import_identifier, alias($._reserved_identifier, $.identifier))),
           seq(
-            field('name', choice($._module_export_name, alias(choice('type', 'typeof'), $.identifier))),
+            field('name', choice(
+              $._module_export_name,
+              alias(choice('type', 'typeof'), $.identifier),
+              alias($._reserved_identifier, $.identifier),
+            )),
             'as',
             field('alias', $._import_identifier),
           ),
@@ -1026,6 +1059,12 @@ export default grammar(JavaScript, {
     // Functions
     // ------------------------------------------------------------------
 
+    _arrow_call_signature: $ => seq(
+      field('type_parameters', optional(alias($._arrow_type_parameter_declaration, $.type_parameter_declaration))),
+      field('parameters', $.formal_parameters),
+      optional($._return_type),
+    ),
+
     _call_signature: $ => seq(
       field('type_parameters', optional($.type_parameter_declaration)),
       field('parameters', $.formal_parameters),
@@ -1113,7 +1152,7 @@ export default grammar(JavaScript, {
           alias($._reserved_identifier, $.identifier),
           $.identifier,
         )),
-        $._call_signature,
+        $._arrow_call_signature,
       ),
       '=>',
       // A label inside the block has dynamic precedence -1, hence 2.
@@ -1218,7 +1257,8 @@ export default grammar(JavaScript, {
     )),
 
     // Flow's `@@iterator` and `@@asyncIterator` names.
-    _iterator_name: _ => token(choice('@@iterator', '@@asyncIterator')),
+    // Well-known symbol keys: `@@iterator`, `@@asyncIterator`, `@@dispose`.
+    _iterator_name: _ => token(/@@[A-Za-z_$][A-Za-z0-9_$]*/),
 
     _property_name: ($, previous) => choice(
       previous,
@@ -1243,6 +1283,42 @@ export default grammar(JavaScript, {
     ),
 
     // Reserved words are valid JSX attribute names: `<Route default />`.
+    // Contextual keywords name JSX elements too: `<source />`, `<type>`.
+    _jsx_identifier: $ => choice(
+      alias($.jsx_identifier, $.identifier),
+      $.identifier,
+      alias($._reserved_identifier, $.identifier),
+    ),
+
+    // As in Flow's parser, a `&` that does not start a character reference is
+    // text: `<A b="x&y" />`.
+    _jsx_string: $ => choice(
+      seq(
+        '"',
+        repeat(choice(
+          alias($.unescaped_double_jsx_string_fragment, $.string_fragment),
+          alias($._jsx_string_ampersand, $.string_fragment),
+          $.html_character_reference,
+        )),
+        '"',
+      ),
+      seq(
+        '\'',
+        repeat(choice(
+          alias($.unescaped_single_jsx_string_fragment, $.string_fragment),
+          alias($._jsx_string_ampersand, $.string_fragment),
+          $.html_character_reference,
+        )),
+        '\'',
+      ),
+    ),
+
+    _jsx_string_ampersand: _ => token.immediate(prec(-1, '&')),
+
+    // A `&` before the closing quote ends the fragment: `"a&"`.
+    unescaped_double_jsx_string_fragment: _ => token.immediate(prec(1, /([^"&]|&[^#A-Za-z"])+/)),
+    unescaped_single_jsx_string_fragment: _ => token.immediate(prec(1, /([^'&]|&[^#A-Za-z'])+/)),
+
     _jsx_attribute_name: $ => reserved('properties', choice(
       alias($._jsx_identifier, $.property_identifier),
       $.jsx_namespace_name,
@@ -1303,6 +1379,7 @@ export default grammar(JavaScript, {
 
     class: $ => prec('literal', seq(
       repeat(field('decorator', $.decorator)),
+      optional('abstract'),
       'class',
       field('name', optional($.identifier)),
       field('type_parameters', optional($.type_parameter_declaration)),
@@ -1345,8 +1422,12 @@ export default grammar(JavaScript, {
         seq(field('member', $.method_definition), optional(';')),
         seq(field('member', choice($.declare_method_definition, $.abstract_method_definition)), $._semicolon_or_signature),
         seq(field('member', choice($.field_definition, $.abstract_property_definition)), $._semicolon),
-        // `class A { x: string y: number }`
-        seq(field('member', alias($._typed_field_definition, $.field_definition)), $._class_field_separator),
+        // As in Flow's parser, a field with a type or a value needs no `;`
+        // before the next member on the same line: `class A { x: T y() {} }`,
+        // `class A { a = 1 b() {} }`.
+        seq(field('member', alias($._separated_field_definition, $.field_definition)), $._class_field_separator),
+        // A field with neither, then a generator method: `class A { get\n *a() {} }`.
+        seq(field('member', alias($._bare_field_definition, $.field_definition)), $._field_name_separator),
         field('member', $.class_static_block),
         ';',
       )),
@@ -1371,13 +1452,24 @@ export default grammar(JavaScript, {
       optional($._initializer),
     ),
 
-    _typed_field_definition: $ => seq(
+    _separated_field_definition: $ => seq(
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
       optional(field('variance', $.variance)),
       field('property', $._property_name),
       optional(choice('?', '!')),
-      field('type_annotation', $.type_annotation),
+      choice(
+        seq(field('type_annotation', $.type_annotation), optional($._initializer)),
+        $._initializer,
+      ),
+    ),
+
+    _bare_field_definition: $ => seq(
+      repeat(field('decorator', $.decorator)),
+      optional($._class_member_modifiers),
+      optional(field('variance', $.variance)),
+      field('property', $._property_name),
+      optional(choice('?', '!')),
     ),
 
     abstract_property_definition: $ => seq(
@@ -1433,6 +1525,7 @@ export default grammar(JavaScript, {
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
       'abstract',
+      optional('override'),
       optional(choice('get', 'set', '*')),
       field('name', $._property_name),
       optional('?'),
@@ -1609,6 +1702,7 @@ export default grammar(JavaScript, {
       $.component_type_annotation,
       $.hook_type_annotation,
       $.function_type_annotation,
+      $.constructor_type_annotation,
       $.import_type,
       $._parenthesized_type,
     ),
@@ -1702,23 +1796,14 @@ export default grammar(JavaScript, {
 
     object_type_annotation: $ => seq(
       choice('{', '{|'),
-      optional(seq(
-        sepBy1($._object_type_separator, $._object_type_member),
-        optional($._object_type_separator),
-      )),
+      optional($._object_type_members),
       choice('}', '|}'),
     ),
 
     // The body of a declared class, which also takes static call properties.
     _declare_class_body: $ => seq(
       choice('{', '{|'),
-      optional(seq(
-        sepBy1($._object_type_separator, choice(
-          $._object_type_member,
-          field('call_properties', alias($._static_call_property, $.object_type_call_property)),
-        )),
-        optional($._object_type_separator),
-      )),
+      optional($._declare_class_members),
       choice('}', '|}'),
     ),
 
@@ -1733,7 +1818,44 @@ export default grammar(JavaScript, {
       field('indexers', $.object_type_indexer),
       field('call_properties', $.object_type_call_property),
       field('internal_slots', $.object_type_internal_slot),
-      '...',
+    ),
+
+    // The members of an object type. As in Flow's parser, the explicit inexact
+    // `...` comes last, and a line break after `...` does not end it:
+    // `{...` then `B}` spreads `B`.
+    _object_type_members: $ => choice(
+      seq(
+        sepBy1($._object_type_separator, $._object_type_member),
+        optional(choice(
+          $._object_type_separator,
+          seq($._object_type_separator, '...', optional(choice(',', ';'))),
+        )),
+      ),
+      seq('...', optional(choice(',', ';'))),
+    ),
+
+    _declare_class_bare_property: $ => prec(-1, seq(
+      optional($._object_type_modifiers),
+      optional(field('variance', $.variance)),
+      field('key', $._object_type_key),
+      optional('?'),
+    )),
+
+    _declare_class_members: $ => choice(
+      seq(
+        sepBy1($._object_type_separator, choice(
+          $._object_type_member,
+          field('call_properties', alias($._static_call_property, $.object_type_call_property)),
+          // A key without a type, `declare class A { b }`, which Flow's
+          // parser accepts.
+          field('properties', alias($._declare_class_bare_property, $.object_type_property)),
+        )),
+        optional(choice(
+          $._object_type_separator,
+          seq($._object_type_separator, '...', optional(choice(',', ';'))),
+        )),
+      ),
+      seq('...', optional(choice(',', ';'))),
     ),
 
     _object_type_key: $ => reserved('properties', choice(
@@ -1758,11 +1880,15 @@ export default grammar(JavaScript, {
       // initializer, `readonly [K] = v`, or a method signature.
       seq(
         optional($._object_type_modifiers),
-        optional(field('variance', $.variance)),
+        optional(choice(
+          field('variance', $.variance),
+          // As in Flow's parser, the variance of `+readonly` is `readonly`.
+          seq(choice('+', '-'), field('variance', alias('readonly', $.variance))),
+        )),
         field('key', $._object_type_key),
         optional('?'),
         choice(
-          seq(':', field('value', $._type)),
+          seq(':', field('value', $._type), optional(seq('=', field('init', $.expression)))),
           seq('=', field('init', $.expression)),
         ),
       ),
@@ -1792,7 +1918,7 @@ export default grammar(JavaScript, {
       seq(
         optional($._object_type_modifiers),
         field('kind', choice('get', 'set')),
-        field('key', $._object_type_key),
+        field('key', choice($._object_type_key, alias($._computed_object_type_key, $.computed_property_name))),
         field('value', alias($._function_type_signature, $.function_type_annotation)),
       ),
     ),
@@ -1912,8 +2038,9 @@ export default grammar(JavaScript, {
 
     _infer_type_parameter: $ => seq(
       field('name', $._type_identifier),
-      // As in Hermes, the bound of an inferred type is the type itself.
-      optional(seq('extends', field('bound', $._prefix_type))),
+      // As in Hermes, the bound of an inferred type is the type itself, a
+      // union with an optional leading `|` included.
+      optional(seq('extends', field('bound', $._union_type))),
     ),
 
     conditional_type_annotation: $ => prec.right('type_conditional', seq(
@@ -1939,8 +2066,15 @@ export default grammar(JavaScript, {
     _function_type_signature: $ => prec.right(seq(
       field('type_parameters', optional($.type_parameter_declaration)),
       $._function_type_params,
-      optional(seq(':', optional(field('return_type', $._return_type_type)))),
+      optional(seq(':', field('return_type', $._return_type_type))),
     )),
+
+    // `declare function f(): %checks;`: a predicate without a return type.
+    _function_type_signature_without_return: $ => seq(
+      field('type_parameters', optional($.type_parameter_declaration)),
+      $._function_type_params,
+      ':',
+    ),
 
     _function_type_params: $ => seq(
       '(',
@@ -1990,9 +2124,19 @@ export default grammar(JavaScript, {
       field('type_annotation', $._type),
     ),
 
+    // `new (x: T) => C`, flow-parser's ConstructorTypeAnnotation.
+    constructor_type_annotation: $ => prec.right('type_function', seq(
+      optional('abstract'),
+      'new',
+      field('type_parameters', optional($.type_parameter_declaration)),
+      $._function_type_params,
+      '=>',
+      field('return_type', $._return_type_type),
+    )),
+
     hook_type_annotation: $ => prec.right('type_function', seq(
       'hook',
-      field('type_parameters', optional($.type_parameter_declaration)),
+      field('type_parameters', optional(alias($._component_type_parameter_declaration, $.type_parameter_declaration))),
       $._function_type_params,
       '=>',
       field('return_type', $._return_type_type),
@@ -2000,7 +2144,7 @@ export default grammar(JavaScript, {
 
     component_type_annotation: $ => prec.right(seq(
       'component',
-      field('type_parameters', optional($.type_parameter_declaration)),
+      field('type_parameters', optional(alias($._component_type_parameter_declaration, $.type_parameter_declaration))),
       $._component_type_params,
       optional(field('renders_type', $._renders_type)),
     )),
@@ -2039,6 +2183,25 @@ export default grammar(JavaScript, {
 
     type_parameter_declaration: $ => seq(
       '<',
+      commaSep1(field('params', $.type_parameter)),
+      optional(','),
+      '>',
+    ),
+
+    // The type parameters of an arrow function. The external scanner returns
+    // `_type_parameters_open` for a `<` that starts a generic arrow function,
+    // `<T>(x) => y`, so that it is not also read as a JSX element.
+    _arrow_type_parameter_declaration: $ => seq(
+      choice('<', alias($._type_parameters_open, '<')),
+      commaSep1(field('params', $.type_parameter)),
+      optional(','),
+      '>',
+    ),
+
+    // Type parameters of component and hook types, where `<` after `component`
+    // or `hook` never starts the type arguments of a call: `x as component<T>()`.
+    _component_type_parameter_declaration: $ => seq(
+      choice('<', alias($._component_type_parameters_open, '<')),
       commaSep1(field('params', $.type_parameter)),
       optional(','),
       '>',

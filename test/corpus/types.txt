@@ -951,3 +951,378 @@ type C = T?.[K];
         id: (identifier))
       index_type: (generic_type_annotation
         id: (identifier)))))
+
+============================================================
+Well-known symbol key in an interface
+============================================================
+
+interface A { @@dispose(): void }
+
+---
+
+(program
+  (interface_declaration
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation))))))
+
+============================================================
+Well-known symbol key in a declared class
+============================================================
+
+declare class A { @@asyncDispose(): B }
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier)))))))
+
+============================================================
+Well-known symbol key in an object type
+============================================================
+
+type A = { @@dispose(): void };
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (function_type_annotation
+          return_type: (void_type_annotation))))))
+
+============================================================
+Covariant readonly property
+============================================================
+
+type A = {+readonly b: C};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        variance: (variance)
+        key: (property_identifier)
+        value: (generic_type_annotation
+          id: (identifier))))))
+
+============================================================
+Contravariant readonly property
+============================================================
+
+type A = {-readonly b: C};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        variance: (variance)
+        key: (property_identifier)
+        value: (generic_type_annotation
+          id: (identifier))))))
+
+============================================================
+Call property return type on the next line
+============================================================
+
+type A = {():
+  B};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      call_properties: (object_type_call_property
+        value: (function_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier)))))))
+
+============================================================
+Generic call property return type on the next line
+============================================================
+
+type A = {<T>(b: T):
+  C};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      call_properties: (object_type_call_property
+        value: (function_type_annotation
+          type_parameters: (type_parameter_declaration
+            params: (type_parameter
+              name: (identifier)))
+          params: (function_type_param
+            name: (identifier)
+            type_annotation: (generic_type_annotation
+              id: (identifier)))
+          return_type: (generic_type_annotation
+            id: (identifier)))))))
+
+============================================================
+Line comment after an object type spread
+============================================================
+
+type A = {...// c
+  B};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_spread_property
+        (comment)
+        argument: (generic_type_annotation
+          id: (identifier))))))
+
+============================================================
+Object type spread across a line break
+============================================================
+
+type A = {...
+  B};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_spread_property
+        argument: (generic_type_annotation
+          id: (identifier))))))
+
+============================================================
+Explicit inexact object type before a line break
+============================================================
+
+type A = {
+  a: number,
+  ...
+};
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation)))))
+
+============================================================
+Constructor type
+============================================================
+
+type A = new () => B;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (constructor_type_annotation
+      return_type: (generic_type_annotation
+        id: (identifier)))))
+
+============================================================
+Generic constructor type
+============================================================
+
+type A = new <T>(b: T) => C;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (constructor_type_annotation
+      type_parameters: (type_parameter_declaration
+        params: (type_parameter
+          name: (identifier)))
+      params: (function_type_param
+        name: (identifier)
+        type_annotation: (generic_type_annotation
+          id: (identifier)))
+      return_type: (generic_type_annotation
+        id: (identifier)))))
+
+============================================================
+Abstract constructor type
+============================================================
+
+type A = abstract new () => B;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    right: (constructor_type_annotation
+      return_type: (generic_type_annotation
+        id: (identifier)))))
+
+============================================================
+Constructor type of a parameter
+============================================================
+
+function f(a: new () => T): void {}
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (identifier)
+      type_annotation: (type_annotation
+        (constructor_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier)))))
+    return_type: (type_annotation
+      (void_type_annotation))
+    body: (statement_block)))
+
+============================================================
+Constructor type as a method return type
+============================================================
+
+class A { b(): new () => C {} }
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        return_type: (type_annotation
+          (constructor_type_annotation
+            return_type: (generic_type_annotation
+              id: (identifier))))
+        body: (statement_block)))))
+
+============================================================
+Constructor type as an indexer value
+============================================================
+
+const a: {[k: string]: new () => B} = {};
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      type_annotation: (type_annotation
+        (object_type_annotation
+          indexers: (object_type_indexer
+            id: (identifier)
+            key: (string_type_annotation)
+            value: (constructor_type_annotation
+              return_type: (generic_type_annotation
+                id: (identifier))))))
+      value: (object))))
+
+============================================================
+Cast to a constructor type
+============================================================
+
+(a as new () => B);
+
+---
+
+(program
+  (expression_statement
+    (parenthesized_expression
+      (as_expression
+        expression: (identifier)
+        type_annotation: (constructor_type_annotation
+          return_type: (generic_type_annotation
+            id: (identifier)))))))
+
+============================================================
+Inferred type bound with a leading union bar
+============================================================
+
+type A<B> = B extends infer C extends | D ? C : E;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    right: (conditional_type_annotation
+      check_type: (generic_type_annotation
+        id: (identifier))
+      extends_type: (infer_type_annotation
+        type_parameter: (type_parameter
+          name: (identifier)
+          bound: (generic_type_annotation
+            id: (identifier))))
+      true_type: (generic_type_annotation
+        id: (identifier))
+      false_type: (generic_type_annotation
+        id: (identifier)))))
+
+============================================================
+Inferred type bound that is a union
+============================================================
+
+type A<B> = B extends infer C extends D | F ? C : E;
+
+---
+
+(program
+  (type_alias
+    id: (identifier)
+    type_parameters: (type_parameter_declaration
+      params: (type_parameter
+        name: (identifier)))
+    right: (conditional_type_annotation
+      check_type: (generic_type_annotation
+        id: (identifier))
+      extends_type: (infer_type_annotation
+        type_parameter: (type_parameter
+          name: (identifier)
+          bound: (union_type_annotation
+            types: (generic_type_annotation
+              id: (identifier))
+            types: (generic_type_annotation
+              id: (identifier)))))
+      true_type: (generic_type_annotation
+        id: (identifier))
+      false_type: (generic_type_annotation
+        id: (identifier)))))

@@ -774,3 +774,546 @@ class A {
     body: (class_body
       member: (field_definition
         property: (property_identifier)))))
+
+============================================================
+Call type arguments with a typed arrow argument and a trailing comma
+============================================================
+
+// @flow
+f<A>((): B => c,);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))
+      arguments: (arguments
+        (arrow_function
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (identifier))))))
+
+============================================================
+Call type arguments with a typed function argument and a trailing comma
+============================================================
+
+// @flow
+f<A>(function (): B {},);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))
+      arguments: (arguments
+        (function_expression
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (statement_block))))))
+
+============================================================
+Call type arguments with a trailing comma
+============================================================
+
+// @flow
+f<A,>((): B => c);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)))
+      arguments: (arguments
+        (arrow_function
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (identifier))))))
+
+============================================================
+Nullable call type argument
+============================================================
+
+// @flow
+f<?A>((): B => c);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (nullable_type_annotation
+          type_annotation: (generic_type_annotation
+            id: (identifier))))
+      arguments: (arguments
+        (arrow_function
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (identifier))))))
+
+============================================================
+Void call type argument
+============================================================
+
+// @flow
+f<void>((): B => c);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (void_type_annotation))
+      arguments: (arguments
+        (arrow_function
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (identifier))))))
+
+============================================================
+Indexer object type as a call type argument
+============================================================
+
+// @flow
+f<{[k: K]: V}>((): B => c);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (object_type_annotation
+          indexers: (object_type_indexer
+            id: (identifier)
+            key: (generic_type_annotation
+              id: (identifier))
+            value: (generic_type_annotation
+              id: (identifier)))))
+      arguments: (arguments
+        (arrow_function
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (identifier))))))
+
+============================================================
+Nested nullable call type argument
+============================================================
+
+// @flow
+f<A<?B>>((): C => d);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (generic_type_annotation
+          id: (identifier)
+          type_parameters: (type_parameter_instantiation
+            params: (nullable_type_annotation
+              type_annotation: (generic_type_annotation
+                id: (identifier))))))
+      arguments: (arguments
+        (arrow_function
+          parameters: (formal_parameters)
+          return_type: (type_annotation
+            (generic_type_annotation
+              id: (identifier)))
+          body: (identifier))))))
+
+============================================================
+Empty call type arguments with a nested template literal
+============================================================
+
+// @flow
+f<>(`${`${a}:`}`);
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation)
+      arguments: (arguments
+        (template_string
+          (template_substitution
+            (template_string
+              (template_substitution
+                (identifier))
+              (string_fragment))))))))
+
+============================================================
+Variance in an object type call type argument
+============================================================
+
+// @flow
+f<{+a: B}>();
+
+---
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (object_type_annotation
+          properties: (object_type_property
+            variance: (variance)
+            key: (property_identifier)
+            value: (generic_type_annotation
+              id: (identifier)))))
+      arguments: (arguments))))
+
+============================================================
+Variance in an object type argument of new
+============================================================
+
+// @flow
+const a = new B<{+c: D}>();
+
+---
+
+(program
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (new_expression
+        constructor: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (object_type_annotation
+            properties: (object_type_property
+              variance: (variance)
+              key: (property_identifier)
+              value: (generic_type_annotation
+                id: (identifier)))))
+        arguments: (arguments)))))
+
+============================================================
+Variance in an object type argument of a superclass
+============================================================
+
+class A extends B<{+c: D}> {}
+
+---
+
+(program
+  (class_declaration
+    name: (identifier)
+    (class_heritage
+      (identifier)
+      super_type_arguments: (type_parameter_instantiation
+        params: (object_type_annotation
+          properties: (object_type_property
+            variance: (variance)
+            key: (property_identifier)
+            value: (generic_type_annotation
+              id: (identifier))))))
+    body: (class_body)))
+
+============================================================
+Line comment after an optional parameter mark
+============================================================
+
+function f(a? // c
+): void {}
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (identifier)
+      (comment))
+    return_type: (type_annotation
+      (void_type_annotation))
+    body: (statement_block)))
+
+============================================================
+Block comments around an optional parameter mark
+============================================================
+
+function f(a/* c */?/* d */: T): void {}
+
+---
+
+(program
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters
+      (identifier)
+      (comment)
+      (comment)
+      type_annotation: (type_annotation
+        (generic_type_annotation
+          id: (identifier))))
+    return_type: (type_annotation
+      (void_type_annotation))
+    body: (statement_block)))
+
+============================================================
+Relational operators with parenthesized operands in conditionals
+============================================================
+
+const a = (b) < (c) ? 1 : (d) > (e) ? 2 : 3;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (ternary_expression
+        condition: (binary_expression
+          left: (parenthesized_expression
+            (identifier))
+          right: (parenthesized_expression
+            (identifier)))
+        consequence: (number)
+        alternative: (ternary_expression
+          condition: (binary_expression
+            left: (parenthesized_expression
+              (identifier))
+            right: (parenthesized_expression
+              (identifier)))
+          consequence: (number)
+          alternative: (number))))))
+
+============================================================
+Conditional between relational operators before parentheses
+============================================================
+
+a = b < c ? d : e > (f);
+
+---
+
+(program
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (ternary_expression
+        condition: (binary_expression
+          left: (identifier)
+          right: (identifier))
+        consequence: (identifier)
+        alternative: (binary_expression
+          left: (identifier)
+          right: (parenthesized_expression
+            (identifier)))))))
+
+============================================================
+Parenthesized conditional between relational operators before a call
+============================================================
+
+x = (a < 2 ? 2 : b > (c))(d);
+
+---
+
+(program
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (call_expression
+        function: (parenthesized_expression
+          (ternary_expression
+            condition: (binary_expression
+              left: (identifier)
+              right: (number))
+            consequence: (number)
+            alternative: (binary_expression
+              left: (identifier)
+              right: (parenthesized_expression
+                (identifier)))))
+        arguments: (arguments
+          (identifier))))))
+
+============================================================
+Generic arrow functions followed by annotated arrow functions
+============================================================
+
+const a = <T>(b: ?T): T => b;
+const c = <T>(b: ?T, d: ?T): boolean => b != null && d != null && b !== d;
+const e = (f: F): string => a(f);
+const g = (f: F): F => f;
+const h = (f: F): string => a(f);
+const i = (f: F): ?string => f?.j;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (nullable_type_annotation
+              type_annotation: (generic_type_annotation
+                id: (identifier)))))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (identifier))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (nullable_type_annotation
+              type_annotation: (generic_type_annotation
+                id: (identifier))))
+          (identifier)
+          type_annotation: (type_annotation
+            (nullable_type_annotation
+              type_annotation: (generic_type_annotation
+                id: (identifier)))))
+        return_type: (type_annotation
+          (boolean_type_annotation))
+        body: (binary_expression
+          left: (binary_expression
+            left: (binary_expression
+              left: (identifier)
+              right: (null))
+            right: (binary_expression
+              left: (identifier)
+              right: (null)))
+          right: (binary_expression
+            left: (identifier)
+            right: (identifier))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (string_type_annotation))
+        body: (call_expression
+          function: (identifier)
+          arguments: (arguments
+            (identifier))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (identifier))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (string_type_annotation))
+        body: (call_expression
+          function: (identifier)
+          arguments: (arguments
+            (identifier))))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (nullable_type_annotation
+            type_annotation: (string_type_annotation)))
+        body: (member_expression
+          object: (identifier)
+          optional_chain: (optional_chain)
+          property: (property_identifier))))))
+
+============================================================
+Generic arrow function on the line after an assignment
+============================================================
+
+const f =
+  <T>(x: T): T => x;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        parameters: (formal_parameters
+          (identifier)
+          type_annotation: (type_annotation
+            (generic_type_annotation
+              id: (identifier))))
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (identifier)))))

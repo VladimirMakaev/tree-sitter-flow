@@ -68,6 +68,15 @@ enum TokenType {
     // Flow: the `[` of `T[]` and `T[K]`. As in Flow's parser, a `[` on a new
     // line never continues a type: `var a: number` then `[]` is two statements.
     TYPE_LBRACKET,
+    // Flow: the `<` of type parameters that start a generic arrow function,
+    // `<T>(x) => y`. As in Flow's parser, that is never a JSX element.
+    TYPE_PARAMETERS_OPEN,
+    // Flow: the `<` of type parameters right after `component` or `hook` in a
+    // type, which never starts call type arguments: `x as component<T>()`.
+    COMPONENT_TYPE_PARAMETERS_OPEN,
+    // Flow: zero-width end of a class field that has neither a type nor a
+    // value, before a generator method: `class A { get\n *a() {} }`.
+    FIELD_NAME_SEPARATOR,
 };
 
 // Flow: see classify_angle.
@@ -183,7 +192,13 @@ static WhitespaceResult scan_whitespace_and_comments(TSLexer *lexer, bool *scann
 
 // Decides whether a semicolon is inserted before the token at the lookahead,
 // once a line terminator has been seen.
-static bool asi_after_line_terminator(TSLexer *lexer, bool after_type) {
+static bool asi_after_line_terminator(TSLexer *lexer, bool after_type, bool field_name) {
+    // Flow: a class field with neither a type nor a value ends at a line break
+    // before a generator method: `get` then `*a() {}`.
+    if (field_name && lexer->lookahead == '*') {
+        lexer->result_symbol = FIELD_NAME_SEPARATOR;
+        return true;
+    }
     // Flow: after a type, a `[` on a new line starts a new statement.
     if (after_type && lexer->lookahead == '[') {
         return true;
@@ -270,7 +285,8 @@ static bool asi_after_line_terminator(TSLexer *lexer, bool after_type) {
     return true;
 }
 
-static bool scan_automatic_semicolon(TSLexer *lexer, bool comment_condition, bool *scanned_comment, bool after_type) {
+static bool scan_automatic_semicolon(TSLexer *lexer, bool comment_condition, bool *scanned_comment, bool after_type,
+                                     bool field_name) {
     lexer->result_symbol = AUTOMATIC_SEMICOLON;
     lexer->mark_end(lexer);
 
@@ -291,7 +307,7 @@ static bool scan_automatic_semicolon(TSLexer *lexer, bool comment_condition, boo
                 if (scan_whitespace_and_comments(lexer, scanned_comment, true) == REJECT) {
                     return false;
                 }
-                return asi_after_line_terminator(lexer, after_type);
+                return asi_after_line_terminator(lexer, after_type, field_name);
             }
 
             // Flow: after an expression, a `!` on the next line is a prefix negation,
@@ -332,8 +348,10 @@ static bool scan_automatic_semicolon(TSLexer *lexer, bool comment_condition, boo
         return false;
     }
 
-    return asi_after_line_terminator(lexer, after_type);
+    return asi_after_line_terminator(lexer, after_type, field_name);
 }
+
+static bool skip_trivia(TSLexer *lexer);
 
 static bool scan_ternary_qmark(TSLexer *lexer) {
     for (;;) {
@@ -354,9 +372,10 @@ static bool scan_ternary_qmark(TSLexer *lexer) {
         lexer->result_symbol = TERNARY_QMARK;
 
         // Flow: `?` followed by `:`, `)` or `,` marks an optional parameter,
-        // not a conditional expression.
-        while (iswspace(lexer->lookahead)) {
-            advance(lexer);
+        // not a conditional expression, also with comments in between.
+        if (!skip_trivia(lexer)) {
+            // A regular expression or a division.
+            return true;
         }
         if (lexer->lookahead == ':' || lexer->lookahead == ')' || lexer->lookahead == ',' ||
             lexer->lookahead == '=') {
@@ -497,7 +516,103 @@ static bool scan_jsx_text(TSLexer *lexer) {
 }
 
 // Flow: skips a string or template literal body inside a type argument list.
+static bool skip_template(TSLexer *lexer);
+static bool skip_quoted(TSLexer *lexer, int32_t quote);
+
+// Flow: skips to the `close` that matches, past nested brackets, strings,
+// template literals and comments. The lookahead is after the opening bracket.
+static bool skip_balanced(TSLexer *lexer, int32_t close) {
+    unsigned depth = 0;
+    for (unsigned steps = 0; steps < 100000; steps++) {
+        int32_t c = lexer->lookahead;
+        if (c == 0) {
+            return false;
+        }
+        if (c == '"' || c == '\'') {
+            if (!skip_quoted(lexer, c)) {
+                return false;
+            }
+            continue;
+        }
+        if (c == '`') {
+            if (!skip_template(lexer)) {
+                return false;
+            }
+            continue;
+        }
+        if (c == '/') {
+            advance(lexer);
+            if (lexer->lookahead == '/') {
+                while (lexer->lookahead != 0 && lexer->lookahead != '\n') {
+                    advance(lexer);
+                }
+            } else if (lexer->lookahead == '*') {
+                advance(lexer);
+                for (;;) {
+                    if (lexer->lookahead == 0) {
+                        return false;
+                    }
+                    int32_t d = lexer->lookahead;
+                    advance(lexer);
+                    if (d == '*' && lexer->lookahead == '/') {
+                        advance(lexer);
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+        if (c == '(' || c == '[' || c == '{') {
+            depth++;
+        } else if (c == ')' || c == ']' || c == '}') {
+            if (depth == 0) {
+                if (c != close) {
+                    return false;
+                }
+                advance(lexer);
+                return true;
+            }
+            depth--;
+        }
+        advance(lexer);
+    }
+    return false;
+}
+
+// Flow: skips a template literal, `${...}` substitutions and nested templates
+// included. The lookahead is the opening backtick.
+static bool skip_template(TSLexer *lexer) {
+    advance(lexer);
+    for (unsigned steps = 0; steps < 100000; steps++) {
+        int32_t c = lexer->lookahead;
+        if (c == 0) {
+            return false;
+        }
+        if (c == '\\') {
+            advance(lexer);
+            if (lexer->lookahead != 0) {
+                advance(lexer);
+            }
+            continue;
+        }
+        advance(lexer);
+        if (c == '`') {
+            return true;
+        }
+        if (c == '$' && lexer->lookahead == '{') {
+            advance(lexer);
+            if (!skip_balanced(lexer, '}')) {
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
 static bool skip_quoted(TSLexer *lexer, int32_t quote) {
+    if (quote == '`') {
+        return skip_template(lexer);
+    }
     advance(lexer);
     while (lexer->lookahead != 0) {
         if (lexer->lookahead == '\\') {
@@ -582,8 +697,50 @@ static bool scan_type_arguments_open(TSLexer *lexer, bool after_new) {
 
 // Called after a `<`. Scans ahead to classify it; returns true for type
 // arguments.
-static bool classify_angle_impl(TSLexer *lexer, bool after_new, AngleKind *kind) {
+// Flow: whether a closing tag `</name` follows within a bounded distance.
+// `<T>(x) => y` is a generic arrow function unless it can be a JSX element
+// with that text: `<T>() => 3</T>` is JSX, as in Flow's parser and Hermes.
+static bool closing_tag_follows(TSLexer *lexer, const char *name) {
+    if (name[0] == 0) {
+        return false;
+    }
+    for (unsigned steps = 0; steps < 4096 && lexer->lookahead != 0; steps++) {
+        if (lexer->lookahead != '<') {
+            advance(lexer);
+            continue;
+        }
+        advance(lexer);
+        if (lexer->lookahead != '/') {
+            continue;
+        }
+        advance(lexer);
+        while (iswspace(lexer->lookahead)) {
+            advance(lexer);
+        }
+        unsigned i = 0;
+        while (name[i] != 0 && lexer->lookahead == name[i]) {
+            advance(lexer);
+            i++;
+        }
+        if (name[i] == 0 && !is_word_char(lexer->lookahead)) {
+            return true;
+        }
+    }
+    return false;
+}
 
+static bool is_type_end(int32_t c) {
+    return c == 'a' || c == ')' || c == ']' || c == '}' || c == '>' || c == '*' || c == '"';
+}
+
+// Flow: scans what follows a `<`, without consuming the `<` itself (the token
+// end is marked before), and classifies it:
+//   - ANGLE_ARGUMENTS: type arguments, `f<T>(x)`, `new C<T>`, `B<T> {`;
+//   - ANGLE_ARROW: the type parameters of a generic arrow function,
+//     `<T>(x) => y` or `<T>(x): R => y`;
+//   - ANGLE_OTHER: anything else, such as a comparison or a JSX element.
+// Returns true for ANGLE_ARGUMENTS.
+static bool classify_angle_impl(TSLexer *lexer, bool after_new, AngleKind *kind) {
     if (lexer->lookahead == '=') {
         return false;
     }
@@ -592,11 +749,47 @@ static bool classify_angle_impl(TSLexer *lexer, bool after_new, AngleKind *kind)
     unsigned paren = 0;
     unsigned bracket = 0;
     unsigned brace = 0;
+    // Syntax that type parameters take and type arguments do not, such as a
+    // default `<T = D>` or a bound `<T: B>`.
+    bool params_only = false;
+    // `extends` at the top level: the `?` and `:` of a conditional type follow.
+    bool conditional = false;
+    // The last significant character, with every word or number as `a`.
+    int32_t prev = '<';
+    // The first word, which a JSX reading would take as the tag name.
+    char name[32] = {0};
     for (unsigned steps = 0; steps < 100000; steps++) {
         int32_t c = lexer->lookahead;
+        bool top = paren == 0 && bracket == 0 && brace == 0;
+        if (c == 0) {
+            return false;
+        }
+        if (iswspace(c)) {
+            advance(lexer);
+            continue;
+        }
+        if (iswalpha(c) || c == '_' || c == '$' || c > 127 || iswdigit(c)) {
+            bool first = prev == '<' && angle == 1 && name[0] == 0;
+            char word[32];
+            unsigned length = 0;
+            while (is_word_char(lexer->lookahead) || lexer->lookahead == '.') {
+                if (length < sizeof(word) - 1) {
+                    word[length] = (char)lexer->lookahead;
+                }
+                length++;
+                advance(lexer);
+            }
+            word[length < sizeof(word) ? length : sizeof(word) - 1] = 0;
+            if (first && length < sizeof(name)) {
+                strcpy(name, word);
+            }
+            if (top && length == 7 && strcmp(word, "extends") == 0) {
+                conditional = true;
+            }
+            prev = 'a';
+            continue;
+        }
         switch (c) {
-            case 0:
-                return false;
             case '<':
                 angle++;
                 advance(lexer);
@@ -613,10 +806,16 @@ static bool classify_angle_impl(TSLexer *lexer, bool after_new, AngleKind *kind)
                 break;
             case '=':
                 advance(lexer);
-                if (lexer->lookahead != '>') {
+                if (lexer->lookahead == '>') {
+                    // The arrow of a function type.
+                    advance(lexer);
+                    prev = '=';
+                    continue;
+                }
+                if (!top) {
                     return false;
                 }
-                advance(lexer);
+                params_only = true;
                 break;
             case '(':
                 paren++;
@@ -670,23 +869,56 @@ static bool classify_angle_impl(TSLexer *lexer, bool after_new, AngleKind *kind)
                 if (!skip_quoted(lexer, c)) {
                     return false;
                 }
-                break;
+                prev = '"';
+                continue;
             case '/':
                 if (!skip_trivia(lexer)) {
                     return false;
                 }
+                continue;
+            case '+':
+                // A variance sigil: `{+a: T}`, `[+a: T]`, `<+T>`.
+                if (prev == '{' || prev == ',' || prev == ';' || prev == '[' || prev == '<') {
+                    if (top) {
+                        params_only = true;
+                    }
+                    advance(lexer);
+                    break;
+                }
+                return false;
+            case '?':
+                // `?T` follows an operator or an opening bracket. After a type,
+                // `?` is only valid in a conditional type, `A extends B ? C : D`;
+                // in `(b) < (c) ? d : e`, the `<` compares.
+                if (top && is_type_end(prev) && !conditional) {
+                    return false;
+                }
+                advance(lexer);
+                break;
+            case ':':
+                // At the top level, `:` is a bound or belongs to a conditional type.
+                if (top && !conditional) {
+                    params_only = true;
+                }
+                advance(lexer);
+                break;
+            case '@':
+                // `@@iterator` keys in object types.
+                if (brace == 0) {
+                    return false;
+                }
+                advance(lexer);
                 break;
             case '!':
             case '%':
             case '^':
             case '~':
-            case '@':
-            case '+':
                 return false;
             default:
                 advance(lexer);
                 break;
         }
+        prev = c;
     }
     return false;
 
@@ -696,97 +928,128 @@ after_close:
     }
     switch (lexer->lookahead) {
         case '(': {
-            // `async <T>(x) => x` is a generic arrow function, not a call, and
-            // `a < b > (c: T)` compares with a type cast, as in Flow.
-            unsigned depth = 0;
+            // Scan the argument or parameter list. `a < b > (c: T)` compares
+            // with a type cast, as in Flow, but a `:` after a `)` starts the
+            // return type of a function in the arguments: `f<A>((): B => c)`.
+            advance(lexer);
+            unsigned depth = 1;
             bool question = false;
+            bool cast_colon = false;
+            bool after_paren = false;
             for (unsigned steps = 0; steps < 100000; steps++) {
                 int32_t c = lexer->lookahead;
                 if (c == 0) {
-                    return true;
+                    return !cast_colon && !params_only;
+                }
+                if (iswspace(c)) {
+                    advance(lexer);
+                    continue;
                 }
                 if (c == '"' || c == '\'' || c == '`') {
                     if (!skip_quoted(lexer, c)) {
-                        return true;
+                        return !cast_colon && !params_only;
                     }
+                    after_paren = false;
                     continue;
                 }
                 if (c == '/') {
                     if (!skip_trivia(lexer)) {
-                        return true;
+                        // A division or a regular expression.
+                        after_paren = false;
                     }
                     continue;
                 }
                 advance(lexer);
                 if (c == '(' || c == '[' || c == '{') {
                     depth++;
+                    after_paren = false;
                 } else if (c == ')' || c == ']' || c == '}') {
                     if (--depth == 0) {
                         break;
                     }
+                    after_paren = depth == 1 && c == ')';
                 } else if (depth == 1 && c == '?') {
                     question = true;
-                } else if (depth == 1 && c == ':' && !question) {
-                    return false;
+                    after_paren = false;
+                } else if (depth == 1 && c == ':') {
+                    if (!question && !after_paren) {
+                        cast_colon = true;
+                    }
+                    after_paren = false;
+                } else {
+                    after_paren = false;
                 }
             }
+            bool arguments = !cast_colon && !params_only;
             if (!skip_trivia(lexer)) {
-                return true;
+                return arguments;
             }
             if (lexer->lookahead == '=') {
                 advance(lexer);
                 if (lexer->lookahead == '>') {
-                    *kind = ANGLE_ARROW;
+                    advance(lexer);
+                    *kind = closing_tag_follows(lexer, name) ? ANGLE_OTHER : ANGLE_ARROW;
                     return false;
                 }
-                *kind = ANGLE_ARGUMENTS;
-                return true;
+                return arguments;
             }
             if (lexer->lookahead == ':') {
-                // A return type: look for `=>` before the expression ends.
+                // A return type: look for `=>` before the expression ends. A
+                // `{` right after a type is a function body.
                 advance(lexer);
                 unsigned nest = 0;
+                int32_t last = ':';
                 for (unsigned steps = 0; steps < 100000; steps++) {
                     int32_t c = lexer->lookahead;
                     if (c == 0) {
-                        return true;
+                        return arguments;
+                    }
+                    if (iswspace(c)) {
+                        advance(lexer);
+                        continue;
                     }
                     if (c == '"' || c == '\'' || c == '`') {
                         if (!skip_quoted(lexer, c)) {
-                            return true;
+                            return arguments;
                         }
+                        last = '"';
                         continue;
                     }
                     if (c == '/') {
                         if (!skip_trivia(lexer)) {
-                            return true;
+                            return arguments;
                         }
                         continue;
+                    }
+                    if (c == '{' && nest == 0 && is_type_end(last)) {
+                        return arguments;
                     }
                     advance(lexer);
                     if (c == '(' || c == '[' || c == '{' || c == '<') {
                         nest++;
                     } else if (c == ')' || c == ']' || c == '}' || c == '>') {
                         if (nest == 0) {
-                            return true;
+                            return arguments;
                         }
                         nest--;
                     } else if (c == '=' && lexer->lookahead == '>') {
                         if (nest == 0) {
-                            *kind = ANGLE_ARROW;
+                            advance(lexer);
+                            *kind = closing_tag_follows(lexer, name) ? ANGLE_OTHER : ANGLE_ARROW;
                             return false;
                         }
                         advance(lexer);
                     } else if ((c == ';' || c == ',') && nest == 0) {
-                        return true;
+                        return arguments;
                     }
+                    last = is_word_char(c) ? 'a' : c;
                 }
-                return true;
+                return arguments;
             }
-            return true;
+            return arguments;
         }
         case '{':
-            return true;
+            return !params_only;
         // `new C<T>;` A comparison cannot end right after `>`.
         case ';':
         case ')':
@@ -794,7 +1057,7 @@ after_close:
         case '}':
         case ',':
         case 0:
-            return after_new;
+            return after_new && !params_only;
         case 'i': {
             const char *word = "implements";
             for (unsigned i = 0; word[i]; i++) {
@@ -803,7 +1066,7 @@ after_close:
                 }
                 advance(lexer);
             }
-            return !is_word_char(lexer->lookahead);
+            return !is_word_char(lexer->lookahead) && !params_only;
         }
         default:
             return false;
@@ -812,28 +1075,67 @@ after_close:
 
 // Flow: see CLASS_FIELD_SEPARATOR. Called with the lookahead on the next token
 // of the same line; the separator is zero-width.
-static bool scan_class_field_separator(TSLexer *lexer) {
+// Flow: the end of a class field before another member on the same line,
+// `class A { x: T y() {} }` or `class A { a = 1 b() {} }`, as in Flow's parser.
+// The lookahead is the first character after the field.
+static bool scan_class_field_separator(TSLexer *lexer, const bool *valid_symbols) {
     int32_t c = lexer->lookahead;
+    lexer->result_symbol = CLASS_FIELD_SEPARATOR;
+    if (c == '*') {
+        // A generator method, unless an expression may continue: `a = b * c`.
+        return !valid_symbols[LOGICAL_OR];
+    }
     if (!(iswalpha(c) || c == '_' || c == '$' || c == '#')) {
         return false;
     }
-    lexer->result_symbol = CLASS_FIELD_SEPARATOR;
     // Words that continue an expression or a type.
     static const char *const continuations[] = {"in", "instanceof", "as", "satisfies", "extends", "is"};
     char word[16];
     unsigned n = 0;
-    while (n < sizeof(word) - 1 && is_word_char(lexer->lookahead)) {
-        word[n++] = (char)lexer->lookahead;
+    if (c == '#') {
         advance(lexer);
     }
-    word[n] = 0;
+    while (is_word_char(lexer->lookahead)) {
+        if (n < sizeof(word) - 1) {
+            word[n] = (char)lexer->lookahead;
+        }
+        n++;
+        advance(lexer);
+    }
+    word[n < sizeof(word) ? n : sizeof(word) - 1] = 0;
     for (unsigned i = 0; i < sizeof(continuations) / sizeof(continuations[0]); i++) {
         if (strcmp(word, continuations[i]) == 0) {
             return false;
         }
     }
-    return true;
+    // The word must start a member: a name followed by `(`, `:`, `=`, `<`,
+    // `?`, `!` or another word. Otherwise it may belong to the type, as in
+    // `(x) => implies x is T` or `(x) => asserts x;`.
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+        advance(lexer);
+    }
+    c = lexer->lookahead;
+    if (is_word_char(c)) {
+        n = 0;
+        while (is_word_char(lexer->lookahead)) {
+            if (n < sizeof(word) - 1) {
+                word[n] = (char)lexer->lookahead;
+            }
+            n++;
+            advance(lexer);
+        }
+        word[n < sizeof(word) ? n : sizeof(word) - 1] = 0;
+        for (unsigned i = 0; i < sizeof(continuations) / sizeof(continuations[0]); i++) {
+            if (strcmp(word, continuations[i]) == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return c == '(' || c == ':' || c == '=' || c == '<' || c == '?' || c == '!' || c == '#' || c == '*' ||
+           c == '[';
 }
+
 
 // Flow: see TYPE_AUTOMATIC_SEMICOLON.
 static bool scan_type_automatic_semicolon(TSLexer *lexer) {
@@ -920,6 +1222,25 @@ static bool scan_type_automatic_semicolon(TSLexer *lexer) {
             }
             return is_word_char(lexer->lookahead);
         }
+        case 's': {
+            // The lower bound of an opaque type, `opaque type A\n  super B`,
+            // continues it; `super(...)`, `super.x` and `super[x]` do not.
+            const char *word = "super";
+            for (unsigned i = 0; word[i]; i++) {
+                if (lexer->lookahead != word[i]) {
+                    return true;
+                }
+                skip(lexer);
+            }
+            if (is_word_char(lexer->lookahead)) {
+                return true;
+            }
+            while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+                skip(lexer);
+            }
+            return lexer->lookahead == '(' || lexer->lookahead == '.' || lexer->lookahead == '[' ||
+                   lexer->lookahead == ';' || lexer->lookahead == '\n' || lexer->lookahead == 0;
+        }
         default:
             return true;
     }
@@ -956,8 +1277,72 @@ static bool scan_type_lbracket(TSLexer *lexer) {
     return true;
 }
 
+// Flow: at a `<` where type parameters may start. Returns TYPE_PARAMETERS_OPEN
+// for a generic arrow function, or TYPE_ARGUMENTS_OPEN when type arguments are
+// valid too and follow, as in `async<T>(x)`.
+static bool scan_type_parameters_open(TSLexer *lexer, const bool *valid_symbols) {
+    advance(lexer);
+    lexer->mark_end(lexer);
+    if (lexer->lookahead == '!') {
+        // `<!--` starts an HTML comment.
+        if (!valid_symbols[HTML_COMMENT] || valid_symbols[LOGICAL_OR] || valid_symbols[ESCAPE_SEQUENCE] ||
+            valid_symbols[REGEX_PATTERN]) {
+            return false;
+        }
+        for (unsigned i = 0; i < 3; i++) {
+            if (lexer->lookahead != "!--"[i]) {
+                return false;
+            }
+            advance(lexer);
+        }
+        while (lexer->lookahead != 0 && lexer->lookahead != '\n' && lexer->lookahead != 0x2028 &&
+               lexer->lookahead != 0x2029) {
+            advance(lexer);
+        }
+        lexer->result_symbol = HTML_COMMENT;
+        lexer->mark_end(lexer);
+        return true;
+    }
+    AngleKind kind;
+    bool arguments = classify_angle(lexer, valid_symbols[NEW_TYPE_ARGUMENTS_OPEN], &kind);
+    if (kind == ANGLE_ARROW) {
+        lexer->result_symbol = TYPE_PARAMETERS_OPEN;
+        return true;
+    }
+    if (arguments && (valid_symbols[TYPE_ARGUMENTS_OPEN] || valid_symbols[NEW_TYPE_ARGUMENTS_OPEN])) {
+        lexer->result_symbol = valid_symbols[NEW_TYPE_ARGUMENTS_OPEN] ? NEW_TYPE_ARGUMENTS_OPEN : TYPE_ARGUMENTS_OPEN;
+        return true;
+    }
+    return false;
+}
+
 bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     (void)payload;
+    if (valid_symbols[COMPONENT_TYPE_PARAMETERS_OPEN] && !valid_symbols[TEMPLATE_CHARS]) {
+        while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+            skip(lexer);
+        }
+        if (lexer->lookahead == '<') {
+            advance(lexer);
+            lexer->mark_end(lexer);
+            lexer->result_symbol = COMPONENT_TYPE_PARAMETERS_OPEN;
+            return true;
+        }
+    }
+    if (valid_symbols[TYPE_PARAMETERS_OPEN] && !valid_symbols[TEMPLATE_CHARS] && !valid_symbols[JSX_TEXT]) {
+        // Line breaks matter for automatic semicolons, so only skip them when
+        // no semicolon or member separator can be inserted here.
+        bool line_breaks_matter = valid_symbols[AUTOMATIC_SEMICOLON] || valid_symbols[TYPE_AUTOMATIC_SEMICOLON] ||
+                                  valid_symbols[FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON] ||
+                                  valid_symbols[CLASS_FIELD_SEPARATOR] || valid_symbols[FIELD_NAME_SEPARATOR];
+        while (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+               (!line_breaks_matter && iswspace(lexer->lookahead))) {
+            skip(lexer);
+        }
+        if (lexer->lookahead == '<') {
+            return scan_type_parameters_open(lexer, valid_symbols);
+        }
+    }
     if (valid_symbols[TYPE_LBRACKET] && !valid_symbols[TEMPLATE_CHARS] && scan_type_lbracket(lexer)) {
         return true;
     }
@@ -993,7 +1378,8 @@ bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const
 
     if (valid_symbols[AUTOMATIC_SEMICOLON] || valid_symbols[FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON]) {
         bool scanned_comment = false;
-        bool ret = scan_automatic_semicolon(lexer, !valid_symbols[LOGICAL_OR], &scanned_comment, valid_symbols[TYPE_LBRACKET]);
+        bool ret = scan_automatic_semicolon(lexer, !valid_symbols[LOGICAL_OR], &scanned_comment, valid_symbols[TYPE_LBRACKET],
+                                            valid_symbols[FIELD_NAME_SEPARATOR]);
         // Flow: a signature followed by `{` on the next line is a definition.
         if (ret && !valid_symbols[AUTOMATIC_SEMICOLON]) {
             if (lexer->lookahead == '{') {
@@ -1004,7 +1390,7 @@ bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const
         if (!ret && !scanned_comment && valid_symbols[TERNARY_QMARK] && lexer->lookahead == '?') {
             return scan_ternary_qmark(lexer);
         }
-        if (!ret && valid_symbols[CLASS_FIELD_SEPARATOR] && scan_class_field_separator(lexer)) {
+        if (!ret && valid_symbols[CLASS_FIELD_SEPARATOR] && scan_class_field_separator(lexer, valid_symbols)) {
             return true;
         }
         if (!ret && (valid_symbols[TYPE_ARGUMENTS_OPEN] || valid_symbols[NEW_TYPE_ARGUMENTS_OPEN]) &&

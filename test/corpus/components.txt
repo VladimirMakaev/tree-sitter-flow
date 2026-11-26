@@ -331,3 +331,70 @@ type B = hook <T>() => T;
           name: (identifier)))
       return_type: (generic_type_annotation
         id: (identifier)))))
+
+============================================================
+Cast to a generic component type with a rest parameter
+============================================================
+
+const a = b as component<T>(...C<T>);
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (as_expression
+        expression: (identifier)
+        type_annotation: (component_type_annotation
+          type_parameters: (type_parameter_declaration
+            params: (type_parameter
+              name: (identifier)))
+          rest: (component_type_parameter
+            type_annotation: (generic_type_annotation
+              id: (identifier)
+              type_parameters: (type_parameter_instantiation
+                params: (generic_type_annotation
+                  id: (identifier))))))))))
+
+============================================================
+Cast to a generic component type with a renders clause
+============================================================
+
+const a = b as component<T>() renders C;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (as_expression
+        expression: (identifier)
+        type_annotation: (component_type_annotation
+          type_parameters: (type_parameter_declaration
+            params: (type_parameter
+              name: (identifier)))
+          renders_type: (type_operator
+            type_annotation: (generic_type_annotation
+              id: (identifier))))))))
+
+============================================================
+Optional rest component parameter
+============================================================
+
+component A(...b?: {c: number}) {}
+
+---
+
+(program
+  (component_declaration
+    id: (identifier)
+    params: (rest_pattern
+      (identifier))
+    type_annotation: (type_annotation
+      (object_type_annotation
+        properties: (object_type_property
+          key: (property_identifier)
+          value: (number_type_annotation))))
+    body: (statement_block)))

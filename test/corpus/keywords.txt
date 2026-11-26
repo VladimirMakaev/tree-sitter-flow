@@ -298,3 +298,156 @@ declare class A {
             id: (identifier)
             type_parameters: (type_parameter_instantiation
               params: (number_type_annotation))))))))
+
+============================================================
+using as an assigned identifier
+============================================================
+
+using = [];
+
+---
+
+(program
+  (expression_statement
+    (assignment_expression
+      left: (identifier)
+      right: (array))))
+
+============================================================
+using as a member object
+============================================================
+
+using.push(a);
+
+---
+
+(program
+  (expression_statement
+    (call_expression
+      function: (member_expression
+        object: (identifier)
+        property: (property_identifier))
+      arguments: (arguments
+        (identifier)))))
+
+============================================================
+using as a callee
+============================================================
+
+using(a);
+
+---
+
+(program
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      arguments: (arguments
+        (identifier)))))
+
+============================================================
+as as a let binding
+============================================================
+
+let as = 1;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number))))
+
+============================================================
+as as an async arrow parameter
+============================================================
+
+const a = async as => as;
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (arrow_function
+        parameter: (identifier)
+        body: (identifier)))))
+
+============================================================
+source as an imported name
+============================================================
+
+import {source as a} from 'b';
+
+---
+
+(program
+  (import_statement
+    (import_clause
+      (named_imports
+        (import_specifier
+          name: (identifier)
+          alias: (identifier))))
+    source: (string
+      (string_fragment))))
+
+============================================================
+defer as an imported name
+============================================================
+
+import {defer as a} from 'b';
+
+---
+
+(program
+  (import_statement
+    (import_clause
+      (named_imports
+        (import_specifier
+          name: (identifier)
+          alias: (identifier))))
+    source: (string
+      (string_fragment))))
+
+============================================================
+of as an imported name
+============================================================
+
+import {of as a} from 'b';
+
+---
+
+(program
+  (import_statement
+    (import_clause
+      (named_imports
+        (import_specifier
+          name: (identifier)
+          alias: (identifier))))
+    source: (string
+      (string_fragment))))
+
+============================================================
+Contextual keywords as imported names
+============================================================
+
+import {set, get, as, using} from 'm';
+
+---
+
+(program
+  (import_statement
+    (import_clause
+      (named_imports
+        (import_specifier
+          name: (identifier))
+        (import_specifier
+          name: (identifier))
+        (import_specifier
+          name: (identifier))
+        (import_specifier
+          name: (identifier))))
+    source: (string
+      (string_fragment))))

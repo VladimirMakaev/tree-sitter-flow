@@ -430,3 +430,145 @@ export * as ns from 'm';
       (identifier))
     source: (string
       (string_fragment))))
+
+============================================================
+Opaque type lower bound on the next line
+============================================================
+
+declare opaque type A
+  super B;
+
+---
+
+(program
+  (declare_opaque_type
+    id: (identifier)
+    lower_bound: (generic_type_annotation
+      id: (identifier))))
+
+============================================================
+Number key without a type in a declared class
+============================================================
+
+declare class A { 42 }
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (number)))))
+
+============================================================
+Name without a type in a declared class
+============================================================
+
+declare class A { b }
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)))))
+
+============================================================
+Typed declared class property with an initializer
+============================================================
+
+declare class A { b: number = 1 }
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (property_identifier)
+        value: (number_type_annotation)
+        init: (number)))))
+
+============================================================
+Computed getter in a declared class
+============================================================
+
+declare class A { get [B]() }
+
+---
+
+(program
+  (declare_class
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (computed_property_name
+          (generic_type_annotation
+            id: (identifier)))
+        value: (function_type_annotation)))))
+
+============================================================
+Computed setter in an interface
+============================================================
+
+interface A { set [B](c: string) }
+
+---
+
+(program
+  (interface_declaration
+    id: (identifier)
+    body: (object_type_annotation
+      properties: (object_type_property
+        key: (computed_property_name
+          (generic_type_annotation
+            id: (identifier)))
+        value: (function_type_annotation
+          params: (function_type_param
+            name: (identifier)
+            type_annotation: (string_type_annotation)))))))
+
+============================================================
+Conditional return type of a declared function on the next line
+============================================================
+
+declare function f<R>():
+  R extends A ? B : C;
+
+---
+
+(program
+  (declare_function
+    id: (identifier)
+    type_annotation: (type_annotation
+      (function_type_annotation
+        type_parameters: (type_parameter_declaration
+          params: (type_parameter
+            name: (identifier)))
+        return_type: (conditional_type_annotation
+          check_type: (generic_type_annotation
+            id: (identifier))
+          extends_type: (generic_type_annotation
+            id: (identifier))
+          true_type: (generic_type_annotation
+            id: (identifier))
+          false_type: (generic_type_annotation
+            id: (identifier)))))))
+
+============================================================
+Declared constant with a destructuring pattern
+============================================================
+
+declare const [] = 'a';
+
+---
+
+(program
+  (declare_variable
+    id: (array_pattern)
+    init: (string
+      (string_fragment))))
