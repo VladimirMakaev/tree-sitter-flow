@@ -19,22 +19,29 @@ ast-grep 0.51, Neovim 0.11 and py-tree-sitter 0.25 and later.
   destructuring, `this`), return types, class fields, `catch` and `for` heads.
 - **Types**: primitives, literals, `?T`, `T[]`, tuples (labeled, variance,
   spread, optional), unions and intersections (leading `|` and `&`), function
-  types (named and unnamed parameters, rest, `this`, `T => U`), generics,
+  types (named and unnamed parameters, rest, `this`, `T => U`), constructor
+  types (`new () => T`, `abstract new () => T`), generics,
   qualified names, `typeof`, `keyof`, indexed access `T[K]` and `T?.[K]`,
   conditional types with `infer`, type guards (`x is T`, `implies x is T`,
   `asserts x`), object types (exact `{| |}`, inexact `...`, spread, indexers,
-  call properties, internal slots, getters and setters, methods, variance,
-  `@@iterator` keys), mapped types, inline `interface {}` types, `renders`,
+  call properties, internal slots, getters and setters, methods, variance
+  including `+readonly`, `@@iterator` and other `@@name` keys), mapped types, inline `interface {}` types, `renders`,
   `renders?` and `renders*`, component types, hook types, `$ReadOnly` and other
   utility types, `%checks` predicates.
 - **Generics**: type parameters with bounds, variance, defaults and `const`;
   type arguments on calls, `new`, optional calls, class heritage and JSX;
   generic arrow functions.
 - **Expressions**: type casts `(x: T)`, `as`, `as const`.
+- **Classes**: abstract class declarations and expressions, `abstract` and
+  `abstract override` members, fields without `;` before another member on the
+  same line (`a: T b() {}`, `a = 1 b() {}`), as Flow's parser accepts.
 - **Declarations**: `type`, `opaque type`, `interface`, `declare` (`var`, `let`,
   `const`, `function`, `class`, `module`, `module.exports`, `export`, `type`,
   `opaque type`, `interface`, `namespace`, `enum`, `component`, `hook`),
-  `import type`, `import typeof`, `export type`.
+  `import type`, `import typeof`, `export type`. Declared classes also take the
+  members Flow's parser accepts and its checker reports: keys without a type,
+  typed properties with an initializer and computed accessors. `declare const`
+  takes a destructuring pattern.
 - **Components and hooks**: `component` declarations with string-named, renamed,
   optional, defaulted and rest parameters and `renders` clauses; `hook`
   declarations; `declare component` and `declare hook`.
@@ -50,8 +57,13 @@ ast-grep 0.51, Neovim 0.11 and py-tree-sitter 0.25 and later.
   template literal types.
 
 Contextual keywords (`type`, `opaque`, `declare`, `component`, `hook`, `match`,
-`renders`, `as`, `enum`, `record`, `of`, ...) stay usable as identifiers and
-property names.
+`renders`, `as`, `using`, `enum`, `record`, `of`, `source`, `defer`, ...) stay
+usable as identifiers, property names, imported names and JSX element names.
+
+`<T>(x) => y` in an expression is a generic arrow function, also where a JSX
+element could start. As in Flow's parser and Hermes, it is a JSX element when
+the element can close: the external scanner reads it as one when a matching
+closing tag `</T` follows within 4 KB.
 
 ## Naming
 
@@ -94,6 +106,12 @@ Where the shapes differ:
 - tree-sitter-javascript's wrappers (`formal_parameters`, `arguments`,
   `parenthesized_expression`, `class_heritage`, ...) and its token-level nodes
   (`string_fragment`, `escape_sequence`, ...) have no ESTree counterpart.
+- Constructs that hermes-parser 0.37 does not support take the snake_case of
+  flow-parser's ESTree name, listed under "Nodes from Flow's own parser" below:
+  `constructor_type_annotation` for `new () => T`, for example.
+- A computed key in an object type, `[K](): T`, holds a type, where flow-parser
+  has an expression. For keys like `[K]` and `[A.b]` the two readings cover the
+  same text, and a type keeps object types free of expression syntax.
 
 The table below is generated from [`script/mapping.mjs`](script/mapping.mjs)
 (`npm run mapping-table`), which the Hermes comparison also uses.
@@ -335,6 +353,7 @@ after a Hermes node or listed with a reason.
 | `satisfies_expression` | Flow parser node (SatisfiesExpression) |
 | `non_null_expression` | Flow parser node (NonNullExpression) for `x!` |
 | `parameter_property` | Flow parser node (ParameterProperty) for `constructor(private x)` |
+| `constructor_type_annotation` | Flow parser node (ConstructorTypeAnnotation) for `new () => T` |
 
 #### tree-sitter nodes with no ESTree node
 
@@ -473,8 +492,8 @@ accepts it; the decision is made by running both parsers on each file
 | react-native `@flow` files | 2151 | 2151 |
 
 Inputs that both reference parsers reject, and how many of them produce an
-`ERROR` or `MISSING` node: Flow parser tests 270 of 563, Hermes 41 of 57,
-Babel 111 of 192, flow-typed 2 of 2.
+`ERROR` or `MISSING` node: Flow parser tests 269 of 563, Hermes 41 of 57,
+Babel 117 of 192, flow-typed 2 of 2.
 
 ### Hermes comparison
 
@@ -506,7 +525,7 @@ into `.cache/suites` at their pinned commits on first use.
 
 | Suite | Compared | Matched | Mismatched | Known differences |
 | --- | ---: | ---: | ---: | ---: |
-| corpus | 67 | 67 | 0 | 0 |
+| corpus | 124 | 124 | 0 | 0 |
 | flow-parser | 1024 | 1024 | 0 | 0 |
 | hermes | 126 | 126 | 0 | 0 |
 | babel | 579 | 576 | 0 | 3 |
@@ -523,6 +542,10 @@ fixture, and `(async) <T>(b) => c`. The converter also corrects one Hermes
 range bug (a class field key after `declare`), counted in the
 `hermes-range-fixup` column.
 
+For the corpus, `npm run compare` also checks the cases hermes-parser rejects
+(constructs it does not support yet, such as constructor types): flow-parser
+must accept each of them. 20 of the 144 corpus cases are such cases.
+
 ### JavaScript
 
 tree-sitter-javascript's own corpus at its pinned version passes:
@@ -532,31 +555,33 @@ recovery; tree-sitter-flow recovers with a different tree.
 
 ### Corpus, queries and bindings
 
-`tree-sitter test` runs 67 corpus tests, 19 highlight assertions and 7 tag
-assertions. CI builds and tests the Node, Rust, Python, Go and C (CMake)
+`tree-sitter test` runs 144 corpus tests, 19 highlight assertions and 7 tag
+assertions. `test/corpus/regressions.txt` puts the regression cases of the
+other corpus files into one file, so that they also parse in each other's
+context. CI builds and tests the Node, Rust, Python, Go and C (CMake)
 bindings on Linux, macOS and Windows, and Swift on macOS; the C test parses
 with the tree-sitter 0.27.2 runtime.
 
 ### Performance
 
-Parsing the 5755 real-code files above (33.5 MB) takes 4.21 s with
-tree-sitter-flow and 17.04 s with tree-sitter-javascript, which spends most of
-its time recovering from Flow syntax errors (6.5 s on one file). Parse time is
+Parsing the 5755 real-code files above (33.5 MB) takes 4.19 s with
+tree-sitter-flow and 17.43 s with tree-sitter-javascript, which spends most of
+its time recovering from Flow syntax errors (6.6 s on one file). Parse time is
 linear: each of the 10 slowest files, repeated 8 times, takes 7.7 to 8.1 times
 as long.
 
 | File | Bytes | ms | 8x / 1x |
 | --- | ---: | ---: | ---: |
-| react/packages/react-server/src/ReactFlightServer.js | 272123 | 30.15 | 7.86 |
-| react-native/flow-typed/environment/node.js | 174456 | 27.64 | 7.91 |
-| react-native/packages/react-native/flow/dom.js.flow | 194764 | 27.48 | 7.69 |
-| react-native/flow-typed/npm/babel-types_v7.x.x.js | 241584 | 27.22 | 8.05 |
-| react/packages/react-devtools-shared/src/backend/fiber/renderer.js | 290563 | 26.39 | 7.74 |
-| react/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js | 244327 | 25.57 | 7.89 |
-| react/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js | 239852 | 23.61 | 7.86 |
-| react/packages/react-client/src/ReactFlightClient.js | 205375 | 23.18 | 7.81 |
-| react/packages/react-server/src/ReactFizzServer.js | 234497 | 22.97 | 7.93 |
-| react-native/packages/react-native/src/private/webapis/intersectionobserver/\_\_tests\_\_/IntersectionObserver-itest.js | 164221 | 20.86 | 8.10 |
+| react/packages/react-server/src/ReactFlightServer.js | 272123 | 29.28 | 7.89 |
+| react/packages/react-devtools-shared/src/backend/fiber/renderer.js | 290563 | 28.00 | 7.81 |
+| react-native/packages/react-native/flow/dom.js.flow | 194764 | 27.46 | 7.87 |
+| react-native/flow-typed/npm/babel-types_v7.x.x.js | 241584 | 27.40 | 7.96 |
+| react-native/flow-typed/environment/node.js | 174456 | 26.85 | 7.98 |
+| react/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js | 244327 | 25.77 | 7.87 |
+| react/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js | 239852 | 24.57 | 7.87 |
+| react/packages/react-client/src/ReactFlightClient.js | 205375 | 23.84 | 7.75 |
+| react/packages/react-server/src/ReactFizzServer.js | 234497 | 22.51 | 7.79 |
+| react-native/packages/react-native/src/private/webapis/intersectionobserver/\_\_tests\_\_/IntersectionObserver-itest.js | 164221 | 21.78 | 8.06 |
 
 ### Running the tests
 
