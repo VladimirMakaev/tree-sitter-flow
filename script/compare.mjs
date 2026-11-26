@@ -26,6 +26,27 @@ import {IGNORED} from './mapping.mjs';
 import {ROOT, SUITES, SUITE_FILES, corpusInputs, ensureSuites, flowParserTests} from './suites.mjs';
 
 const require = createRequire(import.meta.url);
+const flowParser = require('flow-parser');
+
+// Corpus cases that hermes-parser rejects must still be Flow: flow-parser has
+// to accept them. It reads call type arguments only with an `@flow` pragma.
+const FLOW_OPTIONS = {
+  components: true,
+  enums: true,
+  esproposal_decorators: true,
+  pattern_matching: true,
+  records: true,
+  types: true,
+};
+
+function flowParserAccepts(source) {
+  const text = source.includes('@flow') ? source : `// @flow\n${source}`;
+  try {
+    return flowParser.parse(text, FLOW_OPTIONS).errors.length === 0;
+  } catch {
+    return false;
+  }
+}
 
 // hermes-parser runs Hermes compiled to WebAssembly. Some inputs abort the
 // WebAssembly instance, which then fails on every later input, so the module
@@ -243,6 +264,17 @@ async function main() {
         ast = hermesParse(source);
       } catch {
         stats.skipped++;
+        if (suite === 'corpus' && !flowParserAccepts(source)) {
+          stats.mismatched++;
+          const m = {type: 'rejected', kind: 'input rejected by flow-parser and hermes-parser', start: 0, end: 0};
+          files.push({suite, name: input.name, mismatches: [m]});
+          stats.kinds.set(m.kind, (stats.kinds.get(m.kind) ?? 0) + 1);
+          if (!opts.json && printed < opts.maxErrors) {
+            printed++;
+            console.log(c.bold(input.name));
+            console.log(`  ${c.red('neither flow-parser nor hermes-parser accepts this corpus input')}\n`);
+          }
+        }
         continue;
       }
       stats.compared++;
