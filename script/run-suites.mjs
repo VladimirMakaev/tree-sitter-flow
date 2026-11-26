@@ -51,6 +51,10 @@ function walk(dir, accept, out = []) {
   return out;
 }
 
+function isJavaScript(file) {
+  return /\.(m?js|js\.flow)$/.test(file);
+}
+
 function hasFlowPragma(file) {
   const fd = fs.openSync(file, 'r');
   const buf = Buffer.alloc(4096);
@@ -90,6 +94,13 @@ const SUITE_FILES = {
   react: () => walk(path.join(SUITES, 'react/packages'), p => p.endsWith('.js') && hasFlowPragma(p)).sort(),
   'react-native': () => walk(path.join(SUITES, 'react-native'),
     p => (p.endsWith('.js') || p.endsWith('.js.flow')) && hasFlowPragma(p)).sort(),
+  // More real Flow code. Every JavaScript file is a candidate, with or
+  // without `@flow`: the reference parsers decide which ones are valid.
+  'flow-tests': () => walk(path.join(SUITES, 'flow-tests/tests'), isJavaScript).sort(),
+  prettier: () => walk(path.join(SUITES, 'prettier/tests/format'), isJavaScript).sort(),
+  relay: () => walk(path.join(SUITES, 'relay/packages'), isJavaScript).sort(),
+  metro: () => walk(path.join(SUITES, 'metro'), isJavaScript).sort(),
+  stylex: () => walk(path.join(SUITES, 'stylex'), isJavaScript).sort(),
 };
 
 // --------------------------------------------------------------------------
@@ -289,14 +300,8 @@ async function main() {
 
   // A file is in a suite when flow-parser or hermes-parser accepts it.
   const accepted = f => reference.get(f)?.flow || reference.get(f)?.hermes;
-  const suiteInputs = {
-    'flow-parser-tests': flowTests.valid,
-    hermes: groups.hermes.filter(accepted),
-    babel: groups.babel.filter(accepted),
-    'flow-typed': groups['flow-typed'].filter(accepted),
-    react: groups.react.filter(accepted),
-    'react-native': groups['react-native'].filter(accepted),
-  };
+  const suiteInputs = {'flow-parser-tests': flowTests.valid};
+  for (const [name, files] of Object.entries(groups)) suiteInputs[name] = files.filter(accepted);
   // Inputs both reference parsers reject; report how many produce an ERROR.
   const rejected = {};
   for (const name of Object.keys(groups)) rejected[name] = groups[name].filter(f => reference.has(f) && !accepted(f));

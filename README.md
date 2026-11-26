@@ -41,7 +41,11 @@ ast-grep 0.51, Neovim 0.11 and py-tree-sitter 0.25 and later.
   `import type`, `import typeof`, `export type`. Declared classes also take the
   members Flow's parser accepts and its checker reports: keys without a type,
   typed properties with an initializer and computed accessors. `declare const`
-  takes a destructuring pattern.
+  takes a destructuring pattern, and declared namespaces take nested
+  namespaces.
+- **Patterns**: type annotations inside destructuring patterns
+  (`{a: b: T}`) and destructuring patterns as compound assignment targets
+  (`[a] += 1`), which Flow's parser takes and its checker reports.
 - **Components and hooks**: `component` declarations with string-named, renamed,
   optional, defaulted and rest parameters and `renders` clauses; `hook`
   declarations; `declare component` and `declare hook`.
@@ -63,7 +67,11 @@ usable as identifiers, property names, imported names and JSX element names.
 `<T>(x) => y` in an expression is a generic arrow function, also where a JSX
 element could start. As in Flow's parser and Hermes, it is a JSX element when
 the element can close: the external scanner reads it as one when a matching
-closing tag `</T` follows within 4 KB.
+closing tag `</T` follows on the same line.
+
+`await (a)(b)` awaits the call, as in Flow's parser: Flow code is in ES
+modules, where `await` is a keyword. tree-sitter-javascript reads it as a call
+of a function named `await`.
 
 ## Naming
 
@@ -490,10 +498,19 @@ accepts it; the decision is made by running both parsers on each file
 | flow-typed `definitions/` | 2556 | 2556 |
 | react `@flow` files | 1048 | 1048 |
 | react-native `@flow` files | 2151 | 2151 |
+| Flow's type checker tests (`tests/`, all JavaScript files) | 5039 | 5039 |
+| prettier's Flow formatting tests | 1998 | 1998 |
+| relay `packages/` | 2785 | 2785 |
+| metro | 570 | 570 |
+| stylex | 536 | 536 |
+
+For the last five suites every JavaScript file is a candidate, with or without
+`@flow`.
 
 Inputs that both reference parsers reject, and how many of them produce an
 `ERROR` or `MISSING` node: Flow parser tests 269 of 563, Hermes 41 of 57,
-Babel 117 of 192, flow-typed 2 of 2.
+Babel 117 of 192, flow-typed 2 of 2, Flow's type checker tests 172 of 232,
+prettier 23 of 26.
 
 ### Hermes comparison
 
@@ -525,26 +542,38 @@ into `.cache/suites` at their pinned commits on first use.
 
 | Suite | Compared | Matched | Mismatched | Known differences |
 | --- | ---: | ---: | ---: | ---: |
-| corpus | 124 | 124 | 0 | 0 |
+| corpus | 148 | 148 | 0 | 0 |
 | flow-parser | 1024 | 1024 | 0 | 0 |
 | hermes | 126 | 126 | 0 | 0 |
 | babel | 579 | 576 | 0 | 3 |
 | flow-typed | 2524 | 2524 | 0 | 0 |
 | react | 1048 | 1048 | 0 | 0 |
 | react-native | 2147 | 2147 | 0 | 0 |
+| flow-tests | 4792 | 4791 | 0 | 1 |
+| prettier | 1960 | 1959 | 0 | 1 |
+| relay | 2785 | 2785 | 0 | 0 |
+| metro | 570 | 570 | 0 | 0 |
+| stylex | 536 | 536 | 0 | 0 |
 
-The 3 known differences are Babel fixtures where Hermes' tree is wrong and
+The 5 known differences are inputs where Hermes' tree is wrong and
 tree-sitter-flow follows flow-parser or Babel. They are listed with the
 verdicts of flow-parser, hermes-parser and @babel/parser in
 [`script/known-differences.txt`](script/known-differences.txt):
-`declare function f(): %checks;`, two lines of an arrow-in-conditional
-fixture, and `(async) <T>(b) => c`. The converter also corrects one Hermes
-range bug (a class field key after `declare`), counted in the
-`hermes-range-fixup` column.
+`declare function f(): %checks;`, arrow functions in conditionals in a Babel
+fixture and in prettier's tests, `(async) <T>(b) => c`, and
+`readonly [T]`, which Hermes and Babel read as an indexed access and
+flow-parser as a `readonly` tuple.
+
+The converter also corrects Hermes range bugs where the tree agrees with
+flow-parser, each gated on the wrong range and counted in the
+`hermes-range-fixup` column: a class field key after `declare`, class members
+with a private key that Hermes starts after their modifiers (`static #a`),
+match case bodies and record property defaults in parentheses, and conditional
+types whose check type is in parentheses (`(A) extends B ? C : D`).
 
 For the corpus, `npm run compare` also checks the cases hermes-parser rejects
 (constructs it does not support yet, such as constructor types): flow-parser
-must accept each of them. 20 of the 144 corpus cases are such cases.
+must accept each of them. 26 of the 174 corpus cases are such cases.
 
 ### JavaScript
 
@@ -555,7 +584,7 @@ recovery; tree-sitter-flow recovers with a different tree.
 
 ### Corpus, queries and bindings
 
-`tree-sitter test` runs 144 corpus tests, 19 highlight assertions and 7 tag
+`tree-sitter test` runs 174 corpus tests, 19 highlight assertions and 7 tag
 assertions. `test/corpus/regressions.txt` puts the regression cases of the
 other corpus files into one file, so that they also parse in each other's
 context. CI builds and tests the Node, Rust, Python, Go and C (CMake)
@@ -564,24 +593,24 @@ with the tree-sitter 0.27.2 runtime.
 
 ### Performance
 
-Parsing the 5755 real-code files above (33.5 MB) takes 4.19 s with
-tree-sitter-flow and 17.43 s with tree-sitter-javascript, which spends most of
-its time recovering from Flow syntax errors (6.6 s on one file). Parse time is
-linear: each of the 10 slowest files, repeated 8 times, takes 7.7 to 8.1 times
-as long.
+Parsing the 5755 real-code files of flow-typed, react and react-native
+(33.5 MB) takes 4.28 s with tree-sitter-flow and 17.19 s with
+tree-sitter-javascript, which spends most of its time recovering from Flow
+syntax errors (6.6 s on one file). Parse time is linear: each of the 10 slowest
+files, repeated 8 times, takes 7.7 to 8.2 times as long.
 
 | File | Bytes | ms | 8x / 1x |
 | --- | ---: | ---: | ---: |
-| react/packages/react-server/src/ReactFlightServer.js | 272123 | 29.28 | 7.89 |
-| react/packages/react-devtools-shared/src/backend/fiber/renderer.js | 290563 | 28.00 | 7.81 |
-| react-native/packages/react-native/flow/dom.js.flow | 194764 | 27.46 | 7.87 |
-| react-native/flow-typed/npm/babel-types_v7.x.x.js | 241584 | 27.40 | 7.96 |
-| react-native/flow-typed/environment/node.js | 174456 | 26.85 | 7.98 |
-| react/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js | 244327 | 25.77 | 7.87 |
-| react/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js | 239852 | 24.57 | 7.87 |
-| react/packages/react-client/src/ReactFlightClient.js | 205375 | 23.84 | 7.75 |
-| react/packages/react-server/src/ReactFizzServer.js | 234497 | 22.51 | 7.79 |
-| react-native/packages/react-native/src/private/webapis/intersectionobserver/\_\_tests\_\_/IntersectionObserver-itest.js | 164221 | 21.78 | 8.06 |
+| react/packages/react-reconciler/src/ReactFiberHooks.js | 176741 | 31.07 | 7.74 |
+| react/packages/react-server/src/ReactFlightServer.js | 272123 | 29.22 | 7.81 |
+| react-native/packages/react-native/flow/dom.js.flow | 194764 | 27.77 | 7.89 |
+| react-native/flow-typed/npm/babel-types_v7.x.x.js | 241584 | 27.16 | 8.19 |
+| react-native/flow-typed/environment/node.js | 174456 | 27.05 | 8.12 |
+| react/packages/react-devtools-shared/src/backend/fiber/renderer.js | 290563 | 26.95 | 7.86 |
+| react/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js | 244327 | 26.12 | 7.89 |
+| react/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js | 239852 | 24.05 | 7.90 |
+| flow-typed/definitions/npm/sequelize_v4.x.x/flow_v0.104.x-/sequelize_v4.x.x.js | 223888 | 23.86 | 7.66 |
+| react/packages/react-server/src/ReactFizzServer.js | 234497 | 23.41 | 7.71 |
 
 ### Running the tests
 
@@ -607,6 +636,11 @@ Fetched by [`script/fetch-suites.sh`](script/fetch-suites.sh), never vendored:
 | facebook/react | `edae846a9a17442c00429f2b15375afbfa0376c9` | `packages/` |
 | facebook/react-native | `c3b3eaa37842f6e3cd876978d21ad390a7beb68b` | `*.js`, `*.js.flow` |
 | tree-sitter/tree-sitter-javascript | `44c892e0be055ac465d5eeddae6d3e194424e7de` (v0.25.0) | `test/corpus/` |
+| facebook/flow | `cd7afc31797c5055890fca501ee0e7cde967ce98` | `tests/` |
+| prettier/prettier | `da84d5342bf0cc285136c73709468525bb9c1b01` | `tests/format/flow/`, `tests/format/flow-repo/` |
+| facebook/relay | `b875363226015c5ae2663510167b62e6d383462d` | `packages/` |
+| facebook/metro | `bd367be2178d42c3548698781e5d12fddaf3447c` | `packages/`, `flow-typed/` |
+| facebook/stylex | `7cf34d14a74971e7307ed73a452640a00a1165e8` | `packages/`, `flow-typed/` |
 
 ### CI
 

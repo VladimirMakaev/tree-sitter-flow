@@ -41,3 +41,14 @@ fetch react-native https://github.com/facebook/react-native.git c3b3eaa37842f6e3
   '*.js' '*.js.flow'
 fetch tree-sitter-javascript https://github.com/tree-sitter/tree-sitter-javascript.git \
   44c892e0be055ac465d5eeddae6d3e194424e7de '/test/corpus/'
+# Real Flow code beyond the parser tests.
+fetch flow-tests https://github.com/facebook/flow.git cd7afc31797c5055890fca501ee0e7cde967ce98 \
+  '/tests/**/*.js' '/tests/**/*.js.flow'
+fetch prettier https://github.com/prettier/prettier.git da84d5342bf0cc285136c73709468525bb9c1b01 \
+  '/tests/format/flow/**/*.js' '/tests/format/flow-repo/**/*.js' '/tests/format/flow/**/*.mjs'
+fetch relay https://github.com/facebook/relay.git b875363226015c5ae2663510167b62e6d383462d \
+  '/packages/**/*.js' '/packages/**/*.js.flow'
+fetch metro https://github.com/facebook/metro.git bd367be2178d42c3548698781e5d12fddaf3447c \
+  '/packages/**/*.js' '/packages/**/*.js.flow' '/flow-typed/**/*.js'
+fetch stylex https://github.com/facebook/stylex.git 7cf34d14a74971e7307ed73a452640a00a1165e8 \
+  '/packages/**/*.js' '/packages/**/*.js.flow' '/flow-typed/**/*.js'

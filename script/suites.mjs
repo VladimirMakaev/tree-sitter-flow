@@ -59,7 +59,16 @@ export const SUITE_FILES = {
   react: () => walk(path.join(SUITES, 'react/packages'), p => p.endsWith('.js') && hasFlowPragma(p)).sort(),
   'react-native': () => walk(path.join(SUITES, 'react-native'),
     p => (p.endsWith('.js') || p.endsWith('.js.flow')) && hasFlowPragma(p)).sort(),
+  'flow-tests': () => walk(path.join(SUITES, 'flow-tests/tests'), isJavaScript).sort(),
+  prettier: () => walk(path.join(SUITES, 'prettier/tests/format'), isJavaScript).sort(),
+  relay: () => walk(path.join(SUITES, 'relay/packages'), isJavaScript).sort(),
+  metro: () => walk(path.join(SUITES, 'metro'), isJavaScript).sort(),
+  stylex: () => walk(path.join(SUITES, 'stylex'), isJavaScript).sort(),
 };
+
+function isJavaScript(file) {
+  return /\.(m?js|js\.flow)$/.test(file);
+}
 
 // The inputs of test/corpus/*.txt, as {name, source} pairs.
 export function corpusInputs() {

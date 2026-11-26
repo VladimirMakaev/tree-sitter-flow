@@ -132,6 +132,55 @@ export function fixKeyAfterModifier(text, key) {
   return [i, i + key.name.length];
 }
 
+// Parenthesized child at the end of a node. Hermes ends a match case or a
+// record property default at its parenthesized child's inner end, `'a' =>
+// (b)` or `a: T = (1, 2)`, before the `)`. flow-parser ends them after it.
+// Returns the corrected end, or null when the range is right.
+export function fixParenthesizedEnd(text, node, child) {
+  if (!child || node.range[1] !== child.range[1]) return null;
+  let i = node.range[1];
+  while (i < text.length && /\s/.test(text[i])) i++;
+  if (text[i] !== ')') return null;
+  let j = child.range[0] - 1;
+  while (j >= 0 && /\s/.test(text[j])) j--;
+  return text[j] === '(' ? i + 1 : null;
+}
+
+// Parenthesized check type of a conditional type, `(A) extends B ? C : D`:
+// Hermes starts the conditional type at the check type, inside the `(`.
+// Returns the corrected start, or null when the range is right.
+export function fixConditionalTypeStart(text, node) {
+  const check = node.checkType;
+  if (!check || node.range[0] !== check.range[0]) return null;
+  const limit = node.extendsType.range[0];
+  const closing = open => {
+    let depth = 0;
+    for (let i = open + 1; i < limit; i++) {
+      const ch = text[i];
+      if (ch === '(' || ch === '[' || ch === '{') depth++;
+      else if (ch === ')' || ch === ']' || ch === '}') {
+        if (depth === 0) return ch === ')' ? i : -1;
+        depth--;
+      }
+    }
+    return -1;
+  };
+  // Walk out through the parentheses around the check type, `((A)) extends`.
+  let s = check.range[0];
+  for (;;) {
+    let j = s - 1;
+    while (j >= 0 && /\s/.test(text[j])) j--;
+    if (text[j] !== '(') return null;
+    const k = closing(j);
+    if (k < 0) return null;
+    let after = k + 1;
+    while (after < text.length && /\s/.test(text[after])) after++;
+    if (/^extends\b/.test(text.slice(after))) return j;
+    if (text[after] !== ')') return null;
+    s = j;
+  }
+}
+
 export function convert(ast, text, stats = {}) {
   stats['hermes-range-fixup'] ??= 0;
   const src = new Source(text);
@@ -140,6 +189,8 @@ export function convert(ast, text, stats = {}) {
   // with them, such as decorator expressions that start at the `@`. Starts
   // in this map are moved for the nodes of the current subtree.
   const startRemap = new Map();
+  // Empty statements that tree-sitter folds into the statement before them.
+  const skipEmptyAt = new Set();
   const emit = (kind, start, end, field, parent) => {
     if (startRemap.has(start)) start = startRemap.get(start);
     nodes.push({kind, start, end, field: field ?? null, parent});
@@ -289,20 +340,22 @@ export function convert(ast, text, stats = {}) {
     visit(n.body, id, 'body');
   }
 
-  // Hermes starts some private members at the key; tree-sitter starts them
-  // at the first modifier.
+  // Hermes starts a class member with a private key at the key, after its
+  // modifiers: `static #a`, `readonly #b`, `static +#c`. tree-sitter starts it
+  // at the first modifier. Applies only when the range starts at the key or at
+  // a modifier.
+  const MODIFIER = /(?:^|[^\w$#])(static|declare|override|readonly|accessor|abstract|public|private|protected|async|get|set|\+|-)$/;
   function modifiersStart(s) {
+    const first = s;
     for (;;) {
+      if (!/^(#|\*|\+|-|(static|declare|override|readonly|accessor|abstract|public|private|protected|async|get|set)\b)/.test(text.slice(s))) break;
       const b = src.skipBack(s);
-      const m = /(?:^|[^\w$])(static|declare|override|readonly|accessor|abstract|public|private|protected|async|get|set|\+|-)$/.exec(text.slice(Math.max(0, b - 12), b));
-      if (!m) return s;
-      const kwStart = b - m[1].length;
-      // Stop at keywords that belong to an earlier member.
-      const before = src.skipBack(kwStart);
-      if (before > 0 && !/[;{}\s]/.test(text[before - 1]) && !/(static|declare|override|readonly|accessor|abstract|public|private|protected|async|get|set)$/.test(text.slice(0, before))) return s;
-      if (text[s] !== '#' && text[s] !== '*' && !/^(get|set|static|async)\b/.test(text.slice(s))) return s;
-      s = kwStart;
+      const m = MODIFIER.exec(text.slice(Math.max(0, b - 12), b));
+      if (!m) break;
+      s = b - m[1].length;
     }
+    if (s !== first) stats['hermes-range-fixup']++;
+    return s;
   }
 
   function methodLike(n, parent, field) {
@@ -442,6 +495,7 @@ export function convert(ast, text, stats = {}) {
         return;
       }
       case 'EmptyStatement':
+        if (skipEmptyAt.has(start(n))) return;
         emit('empty_statement', start(n), end(n), field, parent);
         return;
       case 'DebuggerStatement':
@@ -570,7 +624,8 @@ export function convert(ast, text, stats = {}) {
         methodLike(n, parent, field);
         return;
       case 'PropertyDefinition': {
-        const first = n.decorators?.length ? Math.min(start(n), start(n.decorators[0])) : modifiersStart(start(n));
+        const first = n.decorators?.length ? Math.min(start(n), start(n.decorators[0]))
+          : n.key?.type === 'PrivateIdentifier' ? modifiersStart(start(n)) : start(n);
         let last = end(n);
         if (text[last - 1] === ';') last = src.skipBack(last - 1);
         const id = emit('field_definition', first, last, field, parent);
@@ -774,8 +829,19 @@ export function convert(ast, text, stats = {}) {
         return;
       }
       case 'ExportDefaultDeclaration': {
-        const id = emit('export_statement', start(n), end(n), field, parent);
         const d = n.declaration;
+        let e = end(n);
+        // tree-sitter-javascript reads `export default class {}` as a value
+        // with a semicolon, so a `;` after it belongs to the export; Hermes
+        // has an empty statement there.
+        if ((d.type === 'FunctionDeclaration' || d.type === 'ClassDeclaration') && !d.id) {
+          const semi = src.skip(e);
+          if (text[semi] === ';') {
+            e = semi + 1;
+            skipEmptyAt.add(semi);
+          }
+        }
+        const id = emit('export_statement', start(n), e, field, parent);
         if ((d.type === 'FunctionDeclaration' || d.type === 'ClassDeclaration') && !d.id) {
           visit(d, id, 'value', {anonymous: true});
         } else if (/Declaration$|^Declare|^TypeAlias$|^OpaqueType$/.test(d.type)) {
@@ -904,7 +970,9 @@ export function convert(ast, text, stats = {}) {
       }
       case 'RecordDeclarationProperty':
       case 'RecordDeclarationStaticProperty': {
-        const id = emit(snakeCase(n.type), start(n), end(n), field, parent);
+        const fixed = fixParenthesizedEnd(text, n, n.defaultValue ?? n.value);
+        if (fixed !== null) stats['hermes-range-fixup']++;
+        const id = emit(snakeCase(n.type), start(n), fixed ?? end(n), field, parent);
         if (n.variance) visit(n.variance, id, 'variance');
         objectTypeKey(n.key, id);
         visit(n.typeAnnotation, id, 'type_annotation');
@@ -1046,6 +1114,22 @@ export function convert(ast, text, stats = {}) {
         if (text[e - 1] === ',') e = src.skipBack(e - 1);
         const id = emit('component_type_parameter', start(n), e, field, parent);
         children(n, id, [['name', 'name'], ['typeAnnotation', 'type_annotation']]);
+        return;
+      }
+      case 'MatchExpressionCase':
+      case 'MatchStatementCase': {
+        const fixed = fixParenthesizedEnd(text, n, n.body);
+        if (fixed !== null) stats['hermes-range-fixup']++;
+        const id = emit(snakeCase(n.type), start(n), fixed ?? end(n), field, parent);
+        children(n, id, [['pattern', 'pattern'], ['guard', 'guard'], ['body', 'body']]);
+        return;
+      }
+      case 'ConditionalTypeAnnotation': {
+        const fixed = fixConditionalTypeStart(text, n);
+        if (fixed !== null) stats['hermes-range-fixup']++;
+        const id = emit('conditional_type_annotation', fixed ?? start(n), end(n), field, parent);
+        children(n, id, [['checkType', 'check_type'], ['extendsType', 'extends_type'], ['trueType', 'true_type'],
+          ['falseType', 'false_type']]);
         return;
       }
       case 'MatchMemberPattern': {

@@ -44,3 +44,41 @@ test('typed bindings: the annotation is a sibling of the name', () => {
     'number:1:value',
   ]);
 });
+
+test('hermes-range-fixup: parenthesized match case body and record default', () => {
+  for (const [text, inner] of [
+    ["const x = match (a) { 'a' => (b => true), _ => 1 };", "'a' => (b => true)"],
+    ['record R { a: number = (1, 2) }', 'a: number = (1, 2)'],
+  ]) {
+    const options = {flow: 'all', babel: false, sourceType: 'module', enableExperimentalFlowMatchSyntax: true,
+      enableExperimentalFlowRecordSyntax: true};
+    const ast = hermes.parse(text, options);
+    const stats = {};
+    const nodes = convert(ast, text, stats);
+    assert.ok(nodes.some(n => text.slice(n.start, n.end) === inner), text);
+    assert.equal(stats['hermes-range-fixup'], 1, text);
+  }
+});
+
+test('hermes-range-fixup: parenthesized check type of a conditional type', () => {
+  for (const text of ['type A = (?B) extends C ? D : E;', 'type A = ((B)) extends C ? D : E;']) {
+    const stats = {};
+    const nodes = convert(parse(text), text, stats);
+    const n = nodes.find(x => x.kind === 'conditional_type_annotation');
+    assert.equal(text.slice(n.start, n.end), text.slice(9, -1), text);
+    assert.equal(stats['hermes-range-fixup'], 1, text);
+  }
+  const text = 'type A = (B extends C ? D : E);';
+  const stats = {};
+  convert(parse(text), text, stats);
+  assert.equal(stats['hermes-range-fixup'], 0);
+});
+
+test('hermes-range-fixup: private class members start at their modifiers', () => {
+  const text = 'class A {\n  // x\n  static #a: number = 1;\n  static +#b = 2;\n  #c = 3;\n}';
+  const stats = {};
+  const nodes = convert(parse(text), text, stats);
+  const fields = nodes.filter(n => n.kind === 'field_definition').map(n => text.slice(n.start, n.end));
+  assert.deepEqual(fields, ['static #a: number = 1', 'static +#b = 2', '#c = 3']);
+  assert.equal(stats['hermes-range-fixup'], 2);
+});

@@ -30,6 +30,18 @@ babel/packages/babel-parser/test/fixtures/flow/declare-statements/invalid-lone-p
 #     lines match all three parsers.
 babel/packages/babel-parser/test/fixtures/flow/arrows-in-ternaries/issue-13644/input.js # Hermes drops an invalid arrow parameter list
 
+# The same conditional expressions as above, in prettier's tests. flow-parser
+# rejects that file as a whole; hermes-parser accepts it with the trees above.
+prettier/tests/format/flow/ternary/arrows.js # Hermes drops an invalid arrow parameter list
+
+# `readonly [(x: string) => void]`
+#   flow-parser: a TypeOperator `readonly` over a tuple type.
+#   @babel/parser: an IndexedAccessType on a type named `readonly`.
+#   hermes-parser: an IndexedAccessType on a type named `readonly`.
+#   tree-sitter-flow: a type_operator over a tuple type, as flow-parser, the
+#     reference implementation, which also reads `readonly T[]` this way.
+flow-tests/tests/as_const/hint.js # Hermes reads `readonly [T]` as an indexed access
+
 # `(async) <T>(b) => c`
 #   flow-parser: rejects ("Unexpected token `=>`").
 #   @babel/parser: rejects ("Missing semicolon").

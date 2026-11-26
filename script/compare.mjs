@@ -80,7 +80,8 @@ const HERMES_OPTIONS = {
   tokens: false,
 };
 
-const ALL_SUITES = ['corpus', 'flow-parser', 'hermes', 'babel', 'flow-typed', 'react', 'react-native'];
+const ALL_SUITES = ['corpus', 'flow-parser', 'hermes', 'babel', 'flow-typed', 'react', 'react-native',
+  'flow-tests', 'prettier', 'relay', 'metro', 'stylex'];
 
 function parseArgs(argv) {
   const opts = {suites: [], json: false, maxErrors: 200, color: process.stdout.isTTY};
