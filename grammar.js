@@ -21,6 +21,7 @@ const CONTEXTUAL_KEYWORDS = [
   'interface',
   'component',
   'hook',
+  'match',
   'renders',
   'of',
   'abstract',
@@ -65,6 +66,7 @@ export default grammar(JavaScript, {
     $._type_automatic_semicolon,
     $._new_type_arguments_open,
     $._class_field_separator,
+    $._match_lbrace,
     $._type_lbracket,
   ]),
 
@@ -92,6 +94,7 @@ export default grammar(JavaScript, {
     !isConflict(c, ['variable_declarator', '_for_header'])).concat([
     [$.object_type_property, $._static_call_property],
     [$.primary_expression, $.ternary_expression],
+    [$.statement, $.match_statement_case],
     [$._postfix_type, $.optional_indexed_access_type],
     [$._postfix_type, $.indexed_access_type],
     [$.type_operator, $._qualified_id, $._component_type_parameter_body],
@@ -126,6 +129,7 @@ export default grammar(JavaScript, {
     [$._predicate_parameter, $.infer_type_annotation],
     [$._predicate_parameter, $.keyof_type_annotation],
     [$._predicate_parameter, $.typeof_type_annotation],
+    [$.expression_statement, $.sequence_expression, $.match_expression_case],
     [$._infer_type_parameter],
     [$._for_header, $._for_binding],
     [$.variable_declarator, $._for_binding],
@@ -133,6 +137,8 @@ export default grammar(JavaScript, {
     [$._computed_object_type_key, $.object_type_indexer],
     [$._typeof_argument, $.qualified_typeof_identifier],
     [$._primary_type, $.qualified_type_identifier],
+    [$.sequence_expression, $.match_expression_case],
+    [$.match_expression, $.match_statement],
     [$.type_operator, $.variance],
     [$.generic_type_annotation, $._qualified_id],
     [$._parenthesized_type, $.function_type_param],
@@ -149,12 +155,15 @@ export default grammar(JavaScript, {
     [$.await_expression, $.satisfies_expression],
     [$.await_expression, $.non_null_expression],
     [$.await_expression, $.as_expression, $.as_const_expression],
+    [$.primary_expression, $.match_expression],
     [$._method_modifiers],
+    [$.primary_expression, $._property_name, $.match_expression, $.match_statement],
     [$.primary_expression, $.arrow_function, $._method_modifiers],
     [$.arrow_function, $.hook_declaration, $._method_modifiers],
     [$.arrow_function, $.component_declaration, $._method_modifiers],
     [$.primary_expression, $._method_modifiers],
     [$.arrow_function, $._method_modifiers],
+    [$.primary_expression, $.match_expression, $.match_statement],
     [$.primary_expression, $.interface_declaration],
     [$.primary_expression, $.type_alias],
   ]),
@@ -175,6 +184,7 @@ export default grammar(JavaScript, {
 
     statement: ($, previous) => choice(
       previous,
+      $.match_statement,
     ),
 
     declaration: ($, previous) => choice(
@@ -504,6 +514,160 @@ export default grammar(JavaScript, {
       field('type_annotation', $._prefix_type),
     )),
 
+    // Match
+
+    // `match(x)` followed by a block on the next line is a call and a block:
+    // the scanner only accepts a `{` on the line of the `)`.
+    match_expression: $ => seq(
+      'match',
+      '(',
+      field('argument', $._expressions),
+      ')',
+      alias($._match_lbrace, '{'),
+      optional(seq(
+        sepBy1(choice(',', ';'), field('cases', $.match_expression_case)),
+        optional(choice(',', ';')),
+      )),
+      '}',
+    ),
+
+    match_expression_case: $ => seq(
+      optional('case'),
+      field('pattern', $._match_pattern),
+      optional(seq('if', '(', field('guard', $.expression), ')')),
+      choice('=>', ':'),
+      field('body', $.expression),
+    ),
+
+    match_statement: $ => prec.dynamic(1, seq(
+      'match',
+      '(',
+      field('argument', $._expressions),
+      ')',
+      alias($._match_lbrace, '{'),
+      repeat(seq(field('cases', $.match_statement_case), optional(','))),
+      '}',
+      optional($._automatic_semicolon),
+    )),
+
+    match_statement_case: $ => prec.right(seq(
+      optional('case'),
+      field('pattern', $._match_pattern),
+      optional(seq('if', '(', field('guard', $.expression), ')')),
+      choice('=>', ':'),
+      // `{` starts a block here, as at the start of any statement.
+      field('body', choice(prec.dynamic(2, $.statement_block), $.statement)),
+    )),
+
+    _match_pattern: $ => choice(
+      $._match_or_operand,
+      $.match_or_pattern,
+      $.match_as_pattern,
+    ),
+
+    _match_or_operand: $ => choice(
+      $.match_wildcard_pattern,
+      $.match_literal_pattern,
+      $.match_unary_pattern,
+      $.match_identifier_pattern,
+      $.match_member_pattern,
+      $.match_binding_pattern,
+      $.match_object_pattern,
+      $.match_array_pattern,
+      $.match_instance_pattern,
+      $._parenthesized_match_pattern,
+    ),
+
+    _parenthesized_match_pattern: $ => seq('(', $._match_pattern, ')'),
+
+    match_wildcard_pattern: _ => '_',
+
+    match_literal_pattern: $ => field('literal', choice(
+      $.string,
+      $.number,
+      $.true,
+      $.false,
+      $.null,
+    )),
+
+    match_unary_pattern: $ => seq(
+      field('operator', choice('-', '+')),
+      field('argument', $.number),
+    ),
+
+    match_identifier_pattern: $ => field('id', choice($.identifier, alias($.undefined, $.identifier))),
+
+    match_member_pattern: $ => seq(
+      field('base', choice($.match_identifier_pattern, $.match_member_pattern)),
+      choice(
+        seq('.', field('property', alias($.identifier, $.property_identifier))),
+        seq('[', field('property', choice($.string, $.number)), ']'),
+      ),
+    ),
+
+    match_binding_pattern: $ => seq(
+      field('kind', choice('const', 'let', 'var')),
+      field('id', $.identifier),
+    ),
+
+    match_object_pattern: $ => seq('{', optional($._match_object_pattern_contents), '}'),
+
+    match_instance_object_pattern: $ => seq('{', optional($._match_object_pattern_contents), '}'),
+
+    _match_object_pattern_contents: $ => choice(
+      seq(
+        commaSep1(field('properties', $.match_object_pattern_property)),
+        optional(seq(',', field('rest', $.match_rest_pattern))),
+        optional(','),
+      ),
+      seq(field('rest', $.match_rest_pattern), optional(',')),
+    ),
+
+    match_object_pattern_property: $ => choice(
+      seq(
+        field('key', choice($._match_key_identifier, $.string, $.number)),
+        ':',
+        field('pattern', $._match_pattern),
+      ),
+      field('pattern', $.match_binding_pattern),
+      field('key', $._match_key_identifier),
+    ),
+
+    _match_key_identifier: $ => reserved('properties', alias(choice($.identifier, $._reserved_identifier), $.property_identifier)),
+
+    match_rest_pattern: $ => seq('...', optional(field('argument', $.match_binding_pattern))),
+
+    match_array_pattern: $ => seq(
+      '[',
+      choice(
+        seq(
+          commaSep1(field('elements', $._match_pattern)),
+          optional(seq(',', field('rest', $.match_rest_pattern))),
+          optional(','),
+        ),
+        seq(field('rest', $.match_rest_pattern), optional(',')),
+        seq(),
+      ),
+      ']',
+    ),
+
+    match_or_pattern: $ => prec.left('match_or', seq(
+      optional('|'),
+      field('patterns', $._match_or_operand),
+      repeat1(seq('|', field('patterns', $._match_or_operand))),
+    )),
+
+    match_as_pattern: $ => prec.left('match_as', seq(
+      field('pattern', choice($._match_or_operand, $.match_or_pattern)),
+      'as',
+      field('target', choice($.identifier, $.match_binding_pattern)),
+    )),
+
+    match_instance_pattern: $ => seq(
+      field('target_constructor', choice($.match_identifier_pattern, $.match_member_pattern)),
+      field('properties', $.match_instance_object_pattern),
+    ),
+
     // ------------------------------------------------------------------
     // JavaScript statements extended with Flow syntax
     // ------------------------------------------------------------------
@@ -783,6 +947,7 @@ export default grammar(JavaScript, {
       $.as_expression,
       $.as_const_expression,
       $.satisfies_expression,
+      $.match_expression,
     ),
 
     // `import.defer(...)` and `import.source(...)` phase imports.

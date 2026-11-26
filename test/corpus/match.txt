@@ -1,0 +1,292 @@
+============================================================
+Match expressions
+============================================================
+
+const a = match (x) {
+  1 => 'one',
+  'two' => 2,
+  true => 3,
+  null => 4,
+  undefined => 5,
+  -1 => 6,
+  10n => 7,
+  _ => 8,
+};
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (match_expression
+        argument: (identifier)
+        cases: (match_expression_case
+          pattern: (match_literal_pattern
+            literal: (number))
+          body: (string
+            (string_fragment)))
+        cases: (match_expression_case
+          pattern: (match_literal_pattern
+            literal: (string
+              (string_fragment)))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_literal_pattern
+            literal: (true))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_literal_pattern
+            literal: (null))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_identifier_pattern
+            id: (identifier))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_unary_pattern
+            argument: (number))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_literal_pattern
+            literal: (number))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_wildcard_pattern)
+          body: (number))))))
+
+============================================================
+Match patterns
+============================================================
+
+const b = match (x) {
+  const y => y,
+  let z if (z > 1) => z,
+  Foo.Bar => 1,
+  [1, 2, ...const rest] => rest,
+  [...] => 0,
+  {kind: 'a', value: const v} => v,
+  {kind: 'b', ...} => 1,
+  {const k, ...const others} => k,
+  'a' | 'b' => 2,
+  1 | 2 as n => n,
+  Point {x: 0, const y} => y,
+};
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (match_expression
+        argument: (identifier)
+        cases: (match_expression_case
+          pattern: (match_binding_pattern
+            id: (identifier))
+          body: (identifier))
+        cases: (match_expression_case
+          pattern: (match_binding_pattern
+            id: (identifier))
+          guard: (binary_expression
+            left: (identifier)
+            right: (number))
+          body: (identifier))
+        cases: (match_expression_case
+          pattern: (match_member_pattern
+            base: (match_identifier_pattern
+              id: (identifier))
+            property: (property_identifier))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_array_pattern
+            elements: (match_literal_pattern
+              literal: (number))
+            elements: (match_literal_pattern
+              literal: (number))
+            rest: (match_rest_pattern
+              argument: (match_binding_pattern
+                id: (identifier))))
+          body: (identifier))
+        cases: (match_expression_case
+          pattern: (match_array_pattern
+            rest: (match_rest_pattern))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_object_pattern
+            properties: (match_object_pattern_property
+              key: (property_identifier)
+              pattern: (match_literal_pattern
+                literal: (string
+                  (string_fragment))))
+            properties: (match_object_pattern_property
+              key: (property_identifier)
+              pattern: (match_binding_pattern
+                id: (identifier))))
+          body: (identifier))
+        cases: (match_expression_case
+          pattern: (match_object_pattern
+            properties: (match_object_pattern_property
+              key: (property_identifier)
+              pattern: (match_literal_pattern
+                literal: (string
+                  (string_fragment))))
+            rest: (match_rest_pattern))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_object_pattern
+            properties: (match_object_pattern_property
+              pattern: (match_binding_pattern
+                id: (identifier)))
+            rest: (match_rest_pattern
+              argument: (match_binding_pattern
+                id: (identifier))))
+          body: (identifier))
+        cases: (match_expression_case
+          pattern: (match_or_pattern
+            patterns: (match_literal_pattern
+              literal: (string
+                (string_fragment)))
+            patterns: (match_literal_pattern
+              literal: (string
+                (string_fragment))))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_as_pattern
+            pattern: (match_or_pattern
+              patterns: (match_literal_pattern
+                literal: (number))
+              patterns: (match_literal_pattern
+                literal: (number)))
+            target: (identifier))
+          body: (identifier))
+        cases: (match_expression_case
+          pattern: (match_instance_pattern
+            target_constructor: (match_identifier_pattern
+              id: (identifier))
+            properties: (match_instance_object_pattern
+              properties: (match_object_pattern_property
+                key: (property_identifier)
+                pattern: (match_literal_pattern
+                  literal: (number)))
+              properties: (match_object_pattern_property
+                pattern: (match_binding_pattern
+                  id: (identifier)))))
+          body: (identifier))))))
+
+============================================================
+Match statements
+============================================================
+
+match (x) {
+  1 => {
+    f();
+  }
+  'a' | 'b' => {
+    g();
+  }
+  _ => {}
+}
+
+---
+
+(program
+  (match_statement
+    argument: (identifier)
+    cases: (match_statement_case
+      pattern: (match_literal_pattern
+        literal: (number))
+      body: (statement_block
+        (expression_statement
+          (call_expression
+            function: (identifier)
+            arguments: (arguments)))))
+    cases: (match_statement_case
+      pattern: (match_or_pattern
+        patterns: (match_literal_pattern
+          literal: (string
+            (string_fragment)))
+        patterns: (match_literal_pattern
+          literal: (string
+            (string_fragment))))
+      body: (statement_block
+        (expression_statement
+          (call_expression
+            function: (identifier)
+            arguments: (arguments)))))
+    cases: (match_statement_case
+      pattern: (match_wildcard_pattern)
+      body: (statement_block))))
+
+============================================================
+Match with several arguments
+============================================================
+
+const c = match (a, b) {
+  [1, 2] => 3,
+  _ => 0,
+};
+
+---
+
+(program
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (match_expression
+        argument: (sequence_expression
+          (identifier)
+          (identifier))
+        cases: (match_expression_case
+          pattern: (match_array_pattern
+            elements: (match_literal_pattern
+              literal: (number))
+            elements: (match_literal_pattern
+              literal: (number)))
+          body: (number))
+        cases: (match_expression_case
+          pattern: (match_wildcard_pattern)
+          body: (number))))))
+
+============================================================
+Match as an identifier
+============================================================
+
+match(x);
+const match = 1;
+match.x = 2;
+const r = match(1)
+{
+  f();
+}
+
+---
+
+(program
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      arguments: (arguments
+        (identifier))))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (expression_statement
+    (assignment_expression
+      left: (member_expression
+        object: (identifier)
+        property: (property_identifier))
+      right: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (call_expression
+        function: (identifier)
+        arguments: (arguments
+          (number)))))
+  (statement_block
+    (expression_statement
+      (call_expression
+        function: (identifier)
+        arguments: (arguments)))))

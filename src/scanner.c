@@ -62,6 +62,9 @@ enum TokenType {
     // Flow: like Flow's parser, two class fields on one line need no `;`:
     // `class A { x: string y: number }`.
     CLASS_FIELD_SEPARATOR,
+    // Flow: the `{` of `match (x) {`, which must be on the line of the `)`.
+    // `match(x)` followed by a block on the next line is a call and a block.
+    MATCH_LBRACE,
     // Flow: the `[` of `T[]` and `T[K]`. As in Flow's parser, a `[` on a new
     // line never continues a type: `var a: number` then `[]` is two statements.
     TYPE_LBRACKET,
@@ -922,6 +925,22 @@ static bool scan_type_automatic_semicolon(TSLexer *lexer) {
     }
 }
 
+static bool scan_match_lbrace(TSLexer *lexer) {
+    // Only spaces may separate `)` and `{`; anything else is left to the
+    // other scanners.
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t' || lexer->lookahead == '\f' ||
+           lexer->lookahead == '\v' || lexer->lookahead == 0xa0 || lexer->lookahead == 0xfeff) {
+        skip(lexer);
+    }
+    if (lexer->lookahead != '{') {
+        return false;
+    }
+    advance(lexer);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = MATCH_LBRACE;
+    return true;
+}
+
 static bool scan_type_lbracket(TSLexer *lexer) {
     // Only spaces may come before the `[`; a line break ends the type.
     while (lexer->lookahead == ' ' || lexer->lookahead == '\t' || lexer->lookahead == '\f' ||
@@ -941,6 +960,14 @@ bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const
     (void)payload;
     if (valid_symbols[TYPE_LBRACKET] && !valid_symbols[TEMPLATE_CHARS] && scan_type_lbracket(lexer)) {
         return true;
+    }
+    if (valid_symbols[MATCH_LBRACE] && !valid_symbols[TEMPLATE_CHARS]) {
+        if (scan_match_lbrace(lexer)) {
+            return true;
+        }
+        if (!valid_symbols[AUTOMATIC_SEMICOLON] && !valid_symbols[TYPE_ARGUMENTS_OPEN]) {
+            return false;
+        }
     }
 
     if (valid_symbols[TEMPLATE_CHARS]) {
