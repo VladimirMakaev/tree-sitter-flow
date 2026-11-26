@@ -1,5 +1,9 @@
 name: Publish
 
+# Publishes the crate when a version tag is pushed by hand. The Release
+# workflow publishes its own tags, since tags pushed with GITHUB_TOKEN do not
+# start this workflow; a version already on crates.io is skipped either way.
+
 on:
   push:
     tags: ["v*.*.*"]
@@ -8,8 +12,29 @@ permissions:
   contents: read
 
 jobs:
+  check:
+    name: Check the tag
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{steps.crate.outputs.exists}}
+    steps:
+      - uses: actions/checkout@v7
+      - name: The tag matches the crate version
+        run: |-
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version $version"
+            exit 1
+          fi
+          node script/check-versions.mjs
+      - name: Skip a version that is already on crates.io
+        id: crate
+        run: bash script/crate-exists.sh "${GITHUB_REF_NAME#v}"
+
   crates:
     name: crates.io
+    needs: check
+    if: needs.check.outputs.exists != 'true'
     # tree-sitter/workflows at a pinned commit.
     uses: tree-sitter/workflows/.github/workflows/package-crates.yml@dca539e07998ac429e185349d3dd194d2c7418d3
     with:

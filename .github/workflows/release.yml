@@ -1,0 +1,110 @@
+name: Release
+
+# Actions -> Release -> Run workflow: bumps the version in every file that
+# carries it, commits "Release v<version>" to main, tags it, creates the
+# GitHub release and publishes the crate. With dry-run, it stops before the
+# push and prints the release commit.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, without a leading v (for example 0.2.0)
+        required: true
+        type: string
+      dry-run:
+        description: Do everything except pushing, releasing and publishing
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  TREE_SITTER_VERSION: v0.27.2
+
+jobs:
+  release:
+    name: Bump, commit, tag and release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - uses: tree-sitter/setup-action/cli@v2
+        with:
+          tree-sitter-ref: ${{env.TREE_SITTER_VERSION}}
+      - name: Check the version
+        run: node script/release-version.mjs "$VERSION"
+        env:
+          VERSION: ${{inputs.version}}
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Bump the version and the lockfiles
+        run: |-
+          tree-sitter version "$VERSION"
+          cargo update -p tree-sitter-flow
+          npm install --package-lock-only --ignore-scripts
+        env:
+          VERSION: ${{inputs.version}}
+      - name: Check versions, the generated parser and the tests
+        run: |-
+          node script/check-versions.mjs
+          tree-sitter generate
+          git diff --exit-code -- src/
+          tree-sitter test
+      - name: Commit and tag
+        run: |-
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit --all --message "Release v$VERSION"
+          git tag --annotate "v$VERSION" --message "Release v$VERSION"
+          git show --stat HEAD
+          git show --format= HEAD
+        env:
+          VERSION: ${{inputs.version}}
+      - name: Push and create the GitHub release
+        if: ${{!inputs.dry-run}}
+        run: |-
+          git push origin HEAD:refs/heads/main "refs/tags/v$VERSION"
+          gh release create "v$VERSION" --generate-notes --verify-tag
+        env:
+          VERSION: ${{inputs.version}}
+          GH_TOKEN: ${{github.token}}
+
+  publish:
+    # Tags pushed with GITHUB_TOKEN do not start publish.yml, so this run
+    # publishes the crate itself, from the release tag.
+    name: Publish to crates.io
+    needs: release
+    if: ${{!inputs.dry-run}}
+    runs-on: ubuntu-latest
+    environment:
+      name: crates
+      url: https://crates.io/crates/tree-sitter-flow
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/v${{inputs.version}}
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+      - name: Skip a version that is already on crates.io
+        id: crate
+        run: bash script/crate-exists.sh "$VERSION"
+        env:
+          VERSION: ${{inputs.version}}
+      - name: Publish
+        if: steps.crate.outputs.exists != 'true'
+        run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{secrets.CARGO_REGISTRY_TOKEN}}
