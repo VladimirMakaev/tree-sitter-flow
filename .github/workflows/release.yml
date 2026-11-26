@@ -49,18 +49,28 @@ jobs:
           VERSION: ${{inputs.version}}
       - name: Install dependencies
         run: npm ci --ignore-scripts
-      - name: Bump the version and the lockfiles
+      - name: Bump the version, the lockfiles and the parser metadata
+        # ABI 15 parsers embed the grammar version, so the parser is
+        # regenerated too.
         run: |-
           tree-sitter version "$VERSION"
           cargo update -p tree-sitter-flow
           npm install --package-lock-only --ignore-scripts
+          tree-sitter generate
         env:
           VERSION: ${{inputs.version}}
       - name: Check versions, the generated parser and the tests
         run: |-
           node script/check-versions.mjs
+          # Only the version metadata of the parser may change.
+          changed=$(git diff -U0 -- src/ | grep '^[-+][^-+]' | grep -v '_version = [0-9]*,$' || true)
+          if [ -n "$changed" ]; then
+            echo "::error::regenerating changed more than the parser's version metadata"
+            echo "$changed" | head -20
+            exit 1
+          fi
           tree-sitter generate
-          git diff --exit-code -- src/
+          git diff --exit-code -- src/grammar.json src/node-types.json
           tree-sitter test
       - name: Commit and tag
         run: |-

@@ -602,18 +602,20 @@ The Hermes comparison job is meant to be a required check for `main`.
 ## Releasing
 
 The version lives in `package.json`, `package-lock.json`, `tree-sitter.json`,
-`Cargo.toml`, `Cargo.lock`, `pyproject.toml`, `CMakeLists.txt` and `Makefile`;
-CI fails when they differ (`node script/check-versions.mjs`).
+`Cargo.toml`, `Cargo.lock`, `pyproject.toml`, `CMakeLists.txt`, `Makefile` and
+the metadata of the ABI 15 parser in `src/parser.c`; CI fails when they differ
+(`node script/check-versions.mjs`).
 
 **A. From GitHub.** Actions → Release → Run workflow, and enter the version
 without a `v` (for example `0.2.0`).
 [`release.yml`](.github/workflows/release.yml) checks that the version is
 semver, greater than the current one and not tagged yet, then:
 
-1. runs `tree-sitter version <x>`, `cargo update -p tree-sitter-flow` and
-   `npm install --package-lock-only --ignore-scripts`;
-2. checks the versions, that the generated parser is up to date and
-   `tree-sitter test`;
+1. runs `tree-sitter version <x>`, `cargo update -p tree-sitter-flow`,
+   `npm install --package-lock-only --ignore-scripts` and `tree-sitter generate`,
+   which writes the new version into the parser's metadata;
+2. checks the versions, that regenerating changed nothing but that metadata,
+   and `tree-sitter test`;
 3. commits "Release v<x>" as `github-actions[bot]`, creates the annotated tag
    `v<x>`, pushes both to `main` and creates the GitHub release with generated
    notes;
@@ -629,6 +631,7 @@ locally and prints the commit, but pushes, releases and publishes nothing.
 tree-sitter version 0.2.0
 cargo update -p tree-sitter-flow
 npm install --package-lock-only --ignore-scripts
+tree-sitter generate
 git commit -am "Release v0.2.0"
 git tag -a v0.2.0 -m "Release v0.2.0"
 git push origin main v0.2.0

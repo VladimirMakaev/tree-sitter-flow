@@ -33,8 +33,13 @@ const match = (file, re) => re.exec(read(file))?.[1] ?? '(missing)';
 const pkg = json('package.json');
 const lock = json('package-lock.json');
 
+const parserVersion = ['major', 'minor', 'patch']
+  .map(part => match('src/parser.c', new RegExp(`\\.${part}_version = (\\d+),`)))
+  .join('.');
+
 const versions = {
   'package.json': pkg.version,
+  'src/parser.c (ABI 15 metadata)': parserVersion,
   'package-lock.json': lock.version,
   'package-lock.json (root package)': lock.packages?.['']?.version,
   'tree-sitter.json': json('tree-sitter.json').metadata.version,
@@ -77,7 +82,7 @@ console.log('Package version');
 for (const [file, version] of Object.entries(versions)) console.log(`  ${file.padEnd(34)} ${version}`);
 if (new Set(Object.values(versions)).size !== 1) {
   console.error('error: the package versions differ; run `tree-sitter version <x>`, ' +
-    '`cargo update -p tree-sitter-flow` and `npm install --package-lock-only --ignore-scripts`');
+    '`cargo update -p tree-sitter-flow`, `npm install --package-lock-only --ignore-scripts` and `tree-sitter generate`');
   ok = false;
 }
 console.log('tree-sitter versions');
