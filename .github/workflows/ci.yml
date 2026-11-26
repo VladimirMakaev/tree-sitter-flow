@@ -33,7 +33,7 @@ jobs:
         # grammar.js extends tree-sitter-javascript's grammar.
         run: npm install --ignore-scripts
       - name: Regenerate the parser
-        run: tree-sitter generate --abi=14
+        run: tree-sitter generate
       - name: Check that src/ is unchanged
         run: git diff --exit-code -- src/
       - name: Check that the versions agree

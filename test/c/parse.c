@@ -22,8 +22,8 @@ static const char *SOURCE =
 int main(void) {
     const TSLanguage *language = tree_sitter_flow();
     uint32_t abi = ts_language_abi_version(language);
-    if (abi != 14) {
-        fprintf(stderr, "expected ABI 14, got %u\n", abi);
+    if (abi != 15) {
+        fprintf(stderr, "expected ABI 15, got %u\n", abi);
         return 1;
     }
     TSParser *parser = ts_parser_new();

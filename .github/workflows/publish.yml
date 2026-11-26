@@ -16,6 +16,6 @@ jobs:
       package-name: tree-sitter-flow
       # Publish the committed parser, which CI checks is up to date.
       generate: false
-      abi-version: 14
+      abi-version: 15
     secrets:
       CARGO_REGISTRY_TOKEN: ${{secrets.CARGO_REGISTRY_TOKEN}}

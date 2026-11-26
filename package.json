@@ -55,7 +55,7 @@
     "prestart": "tree-sitter build --wasm",
     "start": "tree-sitter playground",
     "test": "node --test bindings/node/*_test.js",
-    "generate": "tree-sitter generate --abi=14",
+    "generate": "tree-sitter generate",
     "test:corpus": "tree-sitter test",
     "suites:fetch": "bash script/fetch-suites.sh",
     "suites": "node script/run-suites.mjs",

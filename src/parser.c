@@ -14,7 +14,7 @@
 #pragma GCC optimize ("O0", "jump-tables")
 #endif
 
-#define LANGUAGE_VERSION 14
+#define LANGUAGE_VERSION 15
 #define STATE_COUNT 14637
 #define LARGE_STATE_COUNT 3500
 #define SYMBOL_COUNT 565
@@ -23,9 +23,9 @@
 #define EXTERNAL_TOKEN_COUNT 15
 #define FIELD_COUNT 99
 #define MAX_ALIAS_SEQUENCE_LENGTH 13
-#define MAX_RESERVED_WORD_SET_SIZE 35
+#define MAX_RESERVED_WORD_SET_SIZE 0
 #define PRODUCTION_ID_COUNT 1189
-#define SUPERTYPE_COUNT 0
+#define SUPERTYPE_COUNT 5
 
 enum ts_symbol_identifiers {
   sym_identifier = 1,
@@ -25659,6 +25659,129 @@ static const TSStateId ts_primary_state_ids[STATE_COUNT] = {
   [14636] = 14636,
 };
 
+static const TSSymbol ts_supertype_symbols[SUPERTYPE_COUNT] = {
+  sym_declaration,
+  sym_expression,
+  sym_pattern,
+  sym_primary_expression,
+  sym_statement,
+};
+
+static const TSMapSlice ts_supertype_map_slices[] = {
+  [sym_declaration] = {.index = 0, .length = 28},
+  [sym_expression] = {.index = 28, .length = 16},
+  [sym_pattern] = {.index = 44, .length = 9},
+  [sym_primary_expression] = {.index = 53, .length = 25},
+  [sym_statement] = {.index = 78, .length = 21},
+};
+
+static const TSSymbol ts_supertype_map_entries[] = {
+  [0] =
+    sym_class_declaration,
+    sym_component_declaration,
+    sym_declare_class,
+    sym_declare_component,
+    sym_declare_enum,
+    sym_declare_export_all_declaration,
+    sym_declare_export_declaration,
+    sym_declare_function,
+    sym_declare_hook,
+    sym_declare_interface,
+    sym_declare_module,
+    sym_declare_module_exports,
+    sym_declare_namespace,
+    sym_declare_opaque_type,
+    sym_declare_type_alias,
+    sym_declare_variable,
+    sym_enum_declaration,
+    sym_function_declaration,
+    sym_generator_function_declaration,
+    sym_hook_declaration,
+    sym_import_equals_declaration,
+    sym_interface_declaration,
+    sym_lexical_declaration,
+    sym_opaque_type,
+    sym_record_declaration,
+    sym_type_alias,
+    sym_using_declaration,
+    sym_variable_declaration,
+  [28] =
+    sym_as_const_expression,
+    sym_as_expression,
+    sym_assignment_expression,
+    sym_augmented_assignment_expression,
+    sym_await_expression,
+    sym_binary_expression,
+    sym_jsx_element,
+    sym_jsx_self_closing_element,
+    sym_match_expression,
+    sym_new_expression,
+    sym_primary_expression,
+    sym_satisfies_expression,
+    sym_ternary_expression,
+    sym_unary_expression,
+    sym_update_expression,
+    sym_yield_expression,
+  [44] =
+    sym_array_pattern,
+    sym_identifier,
+    sym_member_expression,
+    sym_non_null_expression,
+    sym_object_pattern,
+    sym_parenthesized_expression,
+    sym_rest_pattern,
+    sym_subscript_expression,
+    sym_undefined,
+  [53] =
+    sym_array,
+    sym_arrow_function,
+    sym_call_expression,
+    sym_class,
+    sym_false,
+    sym_function_expression,
+    sym_generator_function,
+    sym_identifier,
+    sym_member_expression,
+    sym_meta_property,
+    sym_non_null_expression,
+    sym_null,
+    sym_number,
+    sym_object,
+    sym_parenthesized_expression,
+    sym_record_expression,
+    sym_regex,
+    sym_string,
+    sym_subscript_expression,
+    sym_super,
+    sym_template_string,
+    sym_this,
+    sym_true,
+    sym_type_cast_expression,
+    sym_undefined,
+  [78] =
+    sym_break_statement,
+    sym_continue_statement,
+    sym_debugger_statement,
+    sym_declaration,
+    sym_do_statement,
+    sym_empty_statement,
+    sym_export_statement,
+    sym_expression_statement,
+    sym_for_in_statement,
+    sym_for_statement,
+    sym_if_statement,
+    sym_import_statement,
+    sym_labeled_statement,
+    sym_match_statement,
+    sym_return_statement,
+    sym_statement_block,
+    sym_switch_statement,
+    sym_throw_statement,
+    sym_try_statement,
+    sym_while_statement,
+    sym_with_statement,
+};
+
 static const TSCharacterRange extras_character_set_1[] = {
   {'\t', '\r'}, {' ', ' '}, {0xa0, 0xa0}, {0x1680, 0x1680}, {0x2000, 0x200b}, {0x2028, 0x2029}, {0x202f, 0x202f}, {0x205f, 0x2060},
   {0x3000, 0x3000}, {0xfeff, 0xfeff},
@@ -29416,7 +29539,7 @@ static bool ts_lex_keywords(TSLexer *lexer, TSStateId state) {
   }
 }
 
-static const TSLexMode ts_lex_modes[STATE_COUNT] = {
+static const TSLexerMode ts_lex_modes[STATE_COUNT] = {
   [0] = {.lex_state = 0, .external_lex_state = 1},
   [1] = {.lex_state = 166, .external_lex_state = 2},
   [2] = {.lex_state = 10, .external_lex_state = 2},
@@ -810149,6 +810272,7 @@ TS_PUBLIC const TSLanguage *tree_sitter_flow(void) {
     .state_count = STATE_COUNT,
     .large_state_count = LARGE_STATE_COUNT,
     .production_id_count = PRODUCTION_ID_COUNT,
+    .supertype_count = SUPERTYPE_COUNT,
     .field_count = FIELD_COUNT,
     .max_alias_sequence_length = MAX_ALIAS_SEQUENCE_LENGTH,
     .parse_table = &ts_parse_table[0][0],
@@ -810159,6 +810283,9 @@ TS_PUBLIC const TSLanguage *tree_sitter_flow(void) {
     .field_names = ts_field_names,
     .field_map_slices = ts_field_map_slices,
     .field_map_entries = ts_field_map_entries,
+    .supertype_map_slices = ts_supertype_map_slices,
+    .supertype_map_entries = ts_supertype_map_entries,
+    .supertype_symbols = ts_supertype_symbols,
     .symbol_metadata = ts_symbol_metadata,
     .public_symbol_map = ts_symbol_map,
     .alias_map = ts_non_terminal_alias_map,
@@ -810177,6 +810304,13 @@ TS_PUBLIC const TSLanguage *tree_sitter_flow(void) {
       tree_sitter_flow_external_scanner_deserialize,
     },
     .primary_state_ids = ts_primary_state_ids,
+    .name = "flow",
+    .max_reserved_word_set_size = 0,
+    .metadata = {
+      .major_version = 0,
+      .minor_version = 1,
+      .patch_version = 0,
+    },
   };
   return &language;
 }

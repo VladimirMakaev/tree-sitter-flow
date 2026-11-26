@@ -62,6 +62,17 @@ function isConflict(conflict, names) {
 export default grammar(JavaScript, {
   name: 'flow',
 
+  // tree-sitter-javascript reserves JavaScript's keywords (`reserved.global`)
+  // so that they never read as identifiers. In this grammar's ABI 15 parse
+  // table, that also reserves them in states where Flow takes a property name,
+  // such as after `?.` and in JSX attributes, and `a?.default` fails to parse.
+  // With empty sets, keywords stay contextual, as in ABI 14 parsers: a keyword
+  // reads as an identifier wherever the keyword itself is not valid.
+  reserved: {
+    global: _ => [],
+    properties: _ => [],
+  },
+
   externals: ($, previous) => previous.concat([
     $._function_signature_automatic_semicolon,
     $._type_arguments_open,
