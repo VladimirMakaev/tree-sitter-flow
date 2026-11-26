@@ -98,6 +98,9 @@ export default grammar(JavaScript, {
     $._field_name_separator,
     $._arrow_block_end,
     $._after_await,
+    $._jsx_string_fragment_double,
+    $._jsx_string_fragment_single,
+    $._statement_end,
   ]),
 
   precedences: ($, previous) => previous.concat([
@@ -122,6 +125,7 @@ export default grammar(JavaScript, {
   // Two of tree-sitter-javascript's conflicts do not arise in this grammar.
   conflicts: ($, previous) => previous.filter(c => !isConflict(c, ['primary_expression', 'method_definition']) &&
     !isConflict(c, ['variable_declarator', '_for_header'])).concat([
+    [$.statement, $.match_statement_case],
     [$._primary_type, $.tuple_type_labeled_element],
     [$.boolean_literal_type_annotation, $.tuple_type_labeled_element],
     [$.object_type_mapped_type_property, $.variance],
@@ -140,7 +144,6 @@ export default grammar(JavaScript, {
     [$.using_declaration, $.primary_expression],
     [$.object_type_property, $._static_call_property],
     [$.primary_expression, $.ternary_expression],
-    [$.statement, $.match_statement_case],
     [$._postfix_type, $.optional_indexed_access_type],
     [$._postfix_type, $.indexed_access_type],
     [$.type_operator, $._qualified_id, $._component_type_parameter_body],
@@ -419,7 +422,7 @@ export default grammar(JavaScript, {
       'declare',
       'module',
       field('id', choice($.string, $.identifier)),
-      optional(field('body', $.statement_block)),
+      optional(field('body', alias($._flow_block, $.statement_block))),
     )),
 
     declare_module_exports: $ => seq(
@@ -444,6 +447,11 @@ export default grammar(JavaScript, {
       field('id', $.identifier),
       field('body', alias($._declare_namespace_body, $.statement_block)),
     ),
+
+    // The block body of a Flow declaration. Unlike tree-sitter-javascript's
+    // `statement_block`, it takes no automatic semicolon after its `}`, so a
+    // comment that follows is never part of the declaration.
+    _flow_block: $ => seq('{', repeat($.statement), '}'),
 
     // A namespace body also takes nested namespaces without `declare`.
     _declare_namespace_body: $ => seq(
@@ -610,7 +618,7 @@ export default grammar(JavaScript, {
       ')',
       optional(field('renders_type', $._declaration_renders_type)),
       choice(
-        field('body', $.statement_block),
+        field('body', alias($._flow_block, $.statement_block)),
         $._semicolon_or_signature,
       ),
     ),
@@ -630,7 +638,7 @@ export default grammar(JavaScript, {
       field('type_parameters', optional($.type_parameter_declaration)),
       field('params', $.formal_parameters),
       optional(field('return_type', $.type_annotation)),
-      field('body', $.statement_block),
+      field('body', alias($._flow_block, $.statement_block)),
     ),
 
     _renders_type: $ => alias($._renders_operator, $.type_operator),
@@ -744,6 +752,10 @@ export default grammar(JavaScript, {
       alias($._match_lbrace, '{'),
       repeat(seq(field('cases', $.match_statement_case), optional(','))),
       '}',
+      // Never produced: tells the scanner that a match statement may end
+      // here, so that the automatic semicolon comes before a comment on the
+      // same line rather than after it.
+      optional($._statement_end),
       optional($._automatic_semicolon),
     )),
 
@@ -752,8 +764,12 @@ export default grammar(JavaScript, {
       field('pattern', $._match_pattern),
       optional(seq('if', '(', field('guard', $.expression), ')')),
       choice('=>', ':'),
-      // `{` starts a block here, as at the start of any statement.
-      field('body', choice(prec.dynamic(2, $.statement_block), $.statement)),
+      // `{` starts a block here, as at the start of any statement. The case
+      // ends before a comment that follows the block: see match_statement.
+      choice(
+        seq(field('body', prec.dynamic(2, $.statement_block)), optional($._statement_end)),
+        field('body', $.statement),
+      ),
     )),
 
     _match_pattern: $ => choice(
@@ -1174,11 +1190,12 @@ export default grammar(JavaScript, {
         $._arrow_call_signature,
       ),
       '=>',
-      // A label inside the block has dynamic precedence -1, hence 2.
+      // As in tree-sitter-javascript, `{ a: 1 }` is an object: a label inside
+      // a block has dynamic precedence -1.
       choice(
         field('body', $.expression),
         seq(
-          field('body', prec.dynamic(2, $.statement_block)),
+          field('body', $.statement_block),
           // Never produced: tells the scanner that an arrow function's block
           // body just ended, so that `(` or `[` on the next line starts a new
           // statement, as in Flow's parser. An arrow function cannot be
@@ -1340,13 +1357,14 @@ export default grammar(JavaScript, {
     ),
 
     // As in Flow's parser, a `&` that does not start a character reference is
-    // text: `<A b="x&y" />`.
+    // text: `<A b="x&y" />` has one string fragment. The external scanner
+    // reads the fragments, splitting them exactly where tree-sitter-javascript
+    // does around character references such as `&amp;`.
     _jsx_string: $ => choice(
       seq(
         '"',
         repeat(choice(
-          alias($.unescaped_double_jsx_string_fragment, $.string_fragment),
-          alias($._jsx_string_ampersand, $.string_fragment),
+          alias($._jsx_string_fragment_double, $.string_fragment),
           $.html_character_reference,
         )),
         '"',
@@ -1354,19 +1372,12 @@ export default grammar(JavaScript, {
       seq(
         '\'',
         repeat(choice(
-          alias($.unescaped_single_jsx_string_fragment, $.string_fragment),
-          alias($._jsx_string_ampersand, $.string_fragment),
+          alias($._jsx_string_fragment_single, $.string_fragment),
           $.html_character_reference,
         )),
         '\'',
       ),
     ),
-
-    _jsx_string_ampersand: _ => token.immediate(prec(-1, '&')),
-
-    // A `&` before the closing quote ends the fragment: `"a&"`.
-    unescaped_double_jsx_string_fragment: _ => token.immediate(prec(1, /([^"&]|&[^#A-Za-z"])+/)),
-    unescaped_single_jsx_string_fragment: _ => token.immediate(prec(1, /([^'&]|&[^#A-Za-z'])+/)),
 
     _jsx_attribute_name: $ => reserved('properties', choice(
       alias($._jsx_identifier, $.property_identifier),

@@ -85,6 +85,13 @@ enum TokenType {
     // identifier ending a class field or the operator of an await expression;
     // no member separator is inserted there.
     AFTER_AWAIT,
+    // Flow: a run of text in a JSX attribute string, `"` or `'` quoted.
+    JSX_STRING_FRAGMENT_DOUBLE,
+    JSX_STRING_FRAGMENT_SINGLE,
+    // Flow: never produced. It is valid where a Flow statement may end, such
+    // as after a match statement's `}`: an automatic semicolon there comes
+    // before a comment that follows, even where an expression could continue.
+    STATEMENT_END,
 };
 
 // Flow: see classify_angle.
@@ -362,10 +369,12 @@ static bool scan_automatic_semicolon(TSLexer *lexer, bool comment_condition, boo
                 return asi_after_line_terminator(lexer, after_type, field_name, after_arrow_block);
             }
 
-            // Flow: after an expression, a `!` on the next line is a prefix negation,
-            // not a non-null assertion.
+            // Flow: after an expression, a `!` after a comment that spans a line
+            // terminator is a prefix negation, not a non-null assertion. Only
+            // spaces are skipped here: a line break that follows is handled
+            // below, as in tree-sitter-javascript.
             if (result == ACCEPT) {
-                while (iswspace(lexer->lookahead)) {
+                while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
                     skip(lexer);
                 }
                 if (lexer->lookahead == '!') {
@@ -484,9 +493,9 @@ static bool scan_html_comment(TSLexer *lexer) {
     return true;
 }
 
-// Flow: checks whether the text after `&` forms an HTML character reference.
-static bool at_character_reference(TSLexer *lexer) {
-    advance(lexer);
+// Flow: whether a character reference, `&amp;`, `&#163;` or `&#xA3;`,
+// starts at the `&` just consumed. Consumes what it reads.
+static bool scan_character_reference_rest(TSLexer *lexer) {
     unsigned n = 0;
     if (lexer->lookahead == '#') {
         advance(lexer);
@@ -511,6 +520,12 @@ static bool at_character_reference(TSLexer *lexer) {
         }
     }
     return n > 0 && lexer->lookahead == ';';
+}
+
+// Flow: checks whether the text after `&` forms an HTML character reference.
+static bool at_character_reference(TSLexer *lexer) {
+    advance(lexer);
+    return scan_character_reference_rest(lexer);
 }
 
 static bool scan_jsx_text(TSLexer *lexer) {
@@ -738,10 +753,11 @@ static bool scan_word(TSLexer *lexer, const char *word) {
 }
 
 // Flow: whether a type can have `(` right after this word: component and
-// hook types, type operators and constructor types.
+// hook types, type operators, constructor types and `import('a')` types.
 static bool type_word_before_paren(const char *word) {
     static const char *const words[] = {"component", "hook",  "renders", "keyof",   "extends", "is",
-                                        "implies",   "asserts", "readonly", "infer", "new",     "typeof"};
+                                        "implies",   "asserts", "readonly", "infer", "new",     "typeof",
+                                        "import"};
     for (unsigned i = 0; i < sizeof(words) / sizeof(words[0]); i++) {
         if (strcmp(word, words[i]) == 0) {
             return true;
@@ -1638,15 +1654,60 @@ static bool scan_type_parameters_open(TSLexer *lexer, const bool *valid_symbols)
     return false;
 }
 
+// Flow: a JSX attribute string fragment. Like tree-sitter-javascript's
+// `([^"&]|&[^#A-Za-z])+`, it stops before a character reference, but an `&`
+// that starts none is text, as in Flow's parser: `"a&b"` is one fragment.
+static bool scan_jsx_string_fragment(TSLexer *lexer, int32_t quote) {
+    bool has_content = false;
+    for (;;) {
+        int32_t c = lexer->lookahead;
+        if (c == 0 || c == quote) {
+            lexer->mark_end(lexer);
+            return has_content;
+        }
+        if (c != '&') {
+            advance(lexer);
+            has_content = true;
+            continue;
+        }
+        // The fragment may end before this `&`.
+        lexer->mark_end(lexer);
+        advance(lexer);
+        int32_t next = lexer->lookahead;
+        if (next == '#' || (next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z')) {
+            if (scan_character_reference_rest(lexer)) {
+                // The fragment ends before the reference.
+                return has_content;
+            }
+        } else if (next != 0 && next != quote) {
+            // `&` and the character after it, as in tree-sitter-javascript.
+            advance(lexer);
+        }
+        has_content = true;
+    }
+}
+
 bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     (void)payload;
-    // Whether the end of a zero-width token, an automatic semicolon, was marked
-    // before the scans for `<` below skipped spaces: `{ a(); } // b` must not
-    // take the spaces into the block.
+    // Inside a JSX string no automatic semicolon is valid; during error
+    // recovery every symbol is, and the string scan must not run there.
+    if ((valid_symbols[JSX_STRING_FRAGMENT_DOUBLE] || valid_symbols[JSX_STRING_FRAGMENT_SINGLE]) &&
+        !valid_symbols[AUTOMATIC_SEMICOLON]) {
+        bool doubled = valid_symbols[JSX_STRING_FRAGMENT_DOUBLE];
+        lexer->result_symbol = doubled ? JSX_STRING_FRAGMENT_DOUBLE : JSX_STRING_FRAGMENT_SINGLE;
+        return scan_jsx_string_fragment(lexer, doubled ? '"' : '\'');
+    }
+    // Zero-width tokens, such as automatic semicolons and member separators,
+    // end where the scan starts, right after the previous token, whatever the
+    // scans below skip: `{ a(); } // b` and `type A = B // c` must not take the
+    // spaces or the comment. So the end is marked before anything is skipped.
+    // Every token that consumes characters marks its own end.
     bool marked = false;
-    if (valid_symbols[COMPONENT_TYPE_PARAMETERS_OPEN] && !valid_symbols[TEMPLATE_CHARS]) {
+    if (iswspace(lexer->lookahead)) {
         lexer->mark_end(lexer);
         marked = true;
+    }
+    if (valid_symbols[COMPONENT_TYPE_PARAMETERS_OPEN] && !valid_symbols[TEMPLATE_CHARS]) {
         while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
             skip(lexer);
         }
@@ -1663,10 +1724,6 @@ bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const
         bool line_breaks_matter = valid_symbols[AUTOMATIC_SEMICOLON] || valid_symbols[TYPE_AUTOMATIC_SEMICOLON] ||
                                   valid_symbols[FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON] ||
                                   valid_symbols[CLASS_FIELD_SEPARATOR] || valid_symbols[FIELD_NAME_SEPARATOR];
-        if (!marked) {
-            lexer->mark_end(lexer);
-            marked = true;
-        }
         while (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
                (!line_breaks_matter && iswspace(lexer->lookahead))) {
             skip(lexer);
@@ -1711,7 +1768,8 @@ bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const
     if (valid_symbols[AUTOMATIC_SEMICOLON] || valid_symbols[FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON]) {
         bool scanned_comment = false;
         bool crossed_line = false;
-        bool ret = scan_automatic_semicolon(lexer, !valid_symbols[LOGICAL_OR], &scanned_comment, valid_symbols[TYPE_LBRACKET],
+        bool ret = scan_automatic_semicolon(lexer, !valid_symbols[LOGICAL_OR] || valid_symbols[STATEMENT_END],
+                                            &scanned_comment, valid_symbols[TYPE_LBRACKET],
                                             valid_symbols[FIELD_NAME_SEPARATOR],
                                             // After an arrow function's block body or a body-less
                                             // signature, `(` on the next line cannot continue.
@@ -1719,6 +1777,13 @@ bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const
                                                 (valid_symbols[FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON] &&
                                                  !valid_symbols[AUTOMATIC_SEMICOLON]),
                                             marked, &crossed_line);
+        // Flow: a body-less signature ends at the end of the file, also after
+        // a comment. tree-sitter-javascript's automatic semicolon does not,
+        // which takes the comment into the statement; Flow declarations end
+        // at their last token.
+        if (!ret && !valid_symbols[AUTOMATIC_SEMICOLON] && lexer->lookahead == 0) {
+            ret = true;
+        }
         // Flow: a signature followed by `{` on the next line is a definition.
         if (ret && !valid_symbols[AUTOMATIC_SEMICOLON]) {
             if (lexer->lookahead == '{') {

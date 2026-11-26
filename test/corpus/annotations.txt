@@ -706,11 +706,10 @@ const c = (x): T => x;
       name: (identifier)
       value: (arrow_function
         parameters: (formal_parameters)
-        body: (statement_block
-          (labeled_statement
-            label: (statement_identifier)
-            body: (expression_statement
-              (number)))))))
+        body: (object
+          (pair
+            key: (property_identifier)
+            value: (number))))))
   (lexical_declaration
     (variable_declarator
       name: (identifier)
@@ -1845,3 +1844,94 @@ x = a < f(b) > (c);
               (identifier))))
         right: (parenthesized_expression
           (identifier))))))
+
+================================================================================
+Import type as a call type argument
+================================================================================
+
+// @flow
+f<import('a')>();
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (import_type
+          source: (string
+            (string_fragment))))
+      arguments: (arguments))))
+
+================================================================================
+Typeof import type as a call type argument
+================================================================================
+
+// @flow
+f<typeof import('a')>();
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (typeof_type_annotation
+          argument: (import_type
+            source: (string
+              (string_fragment)))))
+      arguments: (arguments))))
+
+================================================================================
+Qualified import type as a call type argument
+================================================================================
+
+// @flow
+const b = f<import('a').B>();
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (call_expression
+        function: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (generic_type_annotation
+            id: (qualified_type_identifier
+              qualification: (import_type
+                source: (string
+                  (string_fragment)))
+              id: (identifier))))
+        arguments: (arguments)))))
+
+================================================================================
+Typeof import type as a member call type argument
+================================================================================
+
+// @flow
+f.g<typeof import('a')>('a');
+
+--------------------------------------------------------------------------------
+
+(program
+  (comment)
+  (expression_statement
+    (call_expression
+      function: (member_expression
+        object: (identifier)
+        property: (property_identifier))
+      type_arguments: (type_parameter_instantiation
+        params: (typeof_type_annotation
+          argument: (import_type
+            source: (string
+              (string_fragment)))))
+      arguments: (arguments
+        (string
+          (string_fragment))))))

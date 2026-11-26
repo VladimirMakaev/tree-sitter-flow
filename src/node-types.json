@@ -13880,11 +13880,6 @@
     }
   },
   {
-    "type": "string_fragment",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "string_literal_type_annotation",
     "named": true,
     "fields": {},
@@ -17708,6 +17703,10 @@
   {
     "type": "string",
     "named": false
+  },
+  {
+    "type": "string_fragment",
+    "named": true
   },
   {
     "type": "super",

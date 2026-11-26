@@ -155,6 +155,10 @@ if (a) { b(); } // c
 { a(); } // c
 while (a) {} /* c */
 const f = () => { try { return a; } catch (e) { return b; } };
+f<import('a')>();
+f<typeof import('a')>();
+const b = f<import('a').B>();
+f.g<typeof import('a')>('a');
 
 ---
 
@@ -166,8 +170,6 @@ const f = () => { try { return a; } catch (e) { return b; } };
       attribute: (jsx_attribute
         (property_identifier)
         (string
-          (string_fragment)
-          (string_fragment)
           (string_fragment)))))
   (expression_statement
     (jsx_self_closing_element
@@ -175,8 +177,6 @@ const f = () => { try { return a; } catch (e) { return b; } };
       attribute: (jsx_attribute
         (property_identifier)
         (string
-          (string_fragment)
-          (string_fragment)
           (string_fragment)))))
   (expression_statement
     (jsx_element
@@ -185,8 +185,6 @@ const f = () => { try { return a; } catch (e) { return b; } };
         attribute: (jsx_attribute
           (property_identifier)
           (string
-            (string_fragment)
-            (string_fragment)
             (string_fragment))))
       (jsx_text)
       close_tag: (jsx_closing_element
@@ -1406,4 +1404,47 @@ const f = () => { try { return a; } catch (e) { return b; } };
               parameter: (identifier)
               body: (statement_block
                 (return_statement
-                  (identifier))))))))))
+                  (identifier)))))))))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (import_type
+          source: (string
+            (string_fragment))))
+      arguments: (arguments)))
+  (expression_statement
+    (call_expression
+      function: (identifier)
+      type_arguments: (type_parameter_instantiation
+        params: (typeof_type_annotation
+          argument: (import_type
+            source: (string
+              (string_fragment)))))
+      arguments: (arguments)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (call_expression
+        function: (identifier)
+        type_arguments: (type_parameter_instantiation
+          params: (generic_type_annotation
+            id: (qualified_type_identifier
+              qualification: (import_type
+                source: (string
+                  (string_fragment)))
+              id: (identifier))))
+        arguments: (arguments))))
+  (expression_statement
+    (call_expression
+      function: (member_expression
+        object: (identifier)
+        property: (property_identifier))
+      type_arguments: (type_parameter_instantiation
+        params: (typeof_type_annotation
+          argument: (import_type
+            source: (string
+              (string_fragment)))))
+      arguments: (arguments
+        (string
+          (string_fragment))))))

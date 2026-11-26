@@ -283,3 +283,383 @@ x = a => a
 2:6  - 2:7                  body: identifier `b`
 2:7  - 2:8                ")"
 2:8  - 2:9        ";"
+
+================================================================================
+Function followed by a line comment and a block comment
+:cst
+================================================================================
+
+function f(a) {
+  return a;
+}  // c
+/**
+ * x
+ */
+h();
+
+--------------------------------------------------------------------------------
+
+1:0  - 8:0    program
+1:0  - 3:1      function_declaration
+1:0  - 1:8        "function"
+1:9  - 1:10       name: identifier `f`
+1:10 - 1:13       parameters: formal_parameters
+1:10 - 1:11         "("
+1:11 - 1:12         identifier `a`
+1:12 - 1:13         ")"
+1:14 - 3:1        body: statement_block
+1:14 - 1:15         "{"
+2:2  - 2:11         return_statement
+2:2  - 2:8            "return"
+2:9  - 2:10           identifier `a`
+2:10 - 2:11           ";"
+3:0  - 3:1          "}"
+3:3  - 3:7      comment `// c`
+4:0  - 6:3      comment
+4:0  - 4:4        `/**\n`
+5:0  - 5:5        ` * x\n`
+6:0  - 6:3        ` */`
+7:0  - 7:4      expression_statement
+7:0  - 7:3        call_expression
+7:0  - 7:1          function: identifier `h`
+7:1  - 7:3          arguments: arguments
+7:1  - 7:2            "("
+7:2  - 7:3            ")"
+7:3  - 7:4        ";"
+
+================================================================================
+Function followed by a block comment that spans lines
+:cst
+================================================================================
+
+function f() { return 1; } /**
+ * c
+ */
+var a = 1;
+
+--------------------------------------------------------------------------------
+
+1:0  - 5:0    program
+1:0  - 1:26     function_declaration
+1:0  - 1:8        "function"
+1:9  - 1:10       name: identifier `f`
+1:10 - 1:12       parameters: formal_parameters
+1:10 - 1:11         "("
+1:11 - 1:12         ")"
+1:13 - 1:26       body: statement_block
+1:13 - 1:14         "{"
+1:15 - 1:24         return_statement
+1:15 - 1:21           "return"
+1:22 - 1:23           number `1`
+1:23 - 1:24           ";"
+1:25 - 1:26         "}"
+1:27 - 3:3      comment
+1:27 - 1:31       `/**\n`
+2:27 - 2:5        ` * c\n`
+3:27 - 3:3        ` */`
+4:0  - 4:10     variable_declaration
+4:0  - 4:3        "var"
+4:4  - 4:9        variable_declarator
+4:4  - 4:5          name: identifier `a`
+4:6  - 4:7          "="
+4:8  - 4:9          value: number `1`
+4:9  - 4:10       ";"
+
+================================================================================
+Type alias without a semicolon before a comment
+:cst
+================================================================================
+
+type A = number // c
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:15     type_alias
+1:0  - 1:4        "type"
+1:5  - 1:6        id: identifier `A`
+1:7  - 1:8        "="
+1:9  - 1:15       right: number_type_annotation
+1:9  - 1:15         "number"
+1:16 - 1:20     comment `// c`
+
+================================================================================
+Declared variable without a semicolon before a comment
+:cst
+================================================================================
+
+declare var a: number // c
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:21     declare_variable
+1:0  - 1:7        "declare"
+1:8  - 1:11       "var"
+1:12 - 1:13       id: identifier `a`
+1:13 - 1:21       type_annotation: type_annotation
+1:13 - 1:14         ":"
+1:15 - 1:21         number_type_annotation
+1:15 - 1:21           "number"
+1:22 - 1:26     comment `// c`
+
+================================================================================
+Opaque type without a semicolon before a comment
+:cst
+================================================================================
+
+opaque type A = number // c
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:22     opaque_type
+1:0  - 1:6        "opaque"
+1:7  - 1:11       "type"
+1:12 - 1:13       id: identifier `A`
+1:14 - 1:15       "="
+1:16 - 1:22       impltype: number_type_annotation
+1:16 - 1:22         "number"
+1:23 - 1:27     comment `// c`
+
+================================================================================
+Declared function without a semicolon before a comment
+:cst
+================================================================================
+
+declare function f(): void // c
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:26     declare_function
+1:0  - 1:7        "declare"
+1:8  - 1:16       "function"
+1:17 - 1:18       id: identifier `f`
+1:18 - 1:26       type_annotation: type_annotation
+1:18 - 1:26         function_type_annotation
+1:18 - 1:19           "("
+1:19 - 1:20           ")"
+1:20 - 1:21           ":"
+1:22 - 1:26           return_type: void_type_annotation
+1:22 - 1:26             "void"
+1:27 - 1:31     comment `// c`
+
+================================================================================
+Declared function before a block comment at the end of the file
+:cst
+================================================================================
+
+declare function f(): void /* c */
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:26     declare_function
+1:0  - 1:7        "declare"
+1:8  - 1:16       "function"
+1:17 - 1:18       id: identifier `f`
+1:18 - 1:26       type_annotation: type_annotation
+1:18 - 1:26         function_type_annotation
+1:18 - 1:19           "("
+1:19 - 1:20           ")"
+1:20 - 1:21           ":"
+1:22 - 1:26           return_type: void_type_annotation
+1:22 - 1:26             "void"
+1:27 - 1:34     comment `/* c */`
+
+================================================================================
+Declared module before a block comment
+:cst
+================================================================================
+
+declare module 'a' {} /* c */
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:21     declare_module
+1:0  - 1:7        "declare"
+1:8  - 1:14       "module"
+1:15 - 1:18       id: string
+1:15 - 1:16         "'"
+1:16 - 1:17         string_fragment `a`
+1:17 - 1:18         "'"
+1:19 - 1:21       body: statement_block
+1:19 - 1:20         "{"
+1:20 - 1:21         "}"
+1:22 - 1:29     comment `/* c */`
+
+================================================================================
+Component before a block comment
+:cst
+================================================================================
+
+component C() {} /* c */
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:16     component_declaration
+1:0  - 1:9        "component"
+1:10 - 1:11       id: identifier `C`
+1:11 - 1:12       "("
+1:12 - 1:13       ")"
+1:14 - 1:16       body: statement_block
+1:14 - 1:15         "{"
+1:15 - 1:16         "}"
+1:17 - 1:24     comment `/* c */`
+
+================================================================================
+Match statement before a line comment
+:cst
+================================================================================
+
+match (x) {
+  1 => {} // c
+  _ => {}
+} // d
+f();
+
+--------------------------------------------------------------------------------
+
+1:0  - 6:0    program
+1:0  - 4:1      match_statement
+1:0  - 1:5        "match"
+1:6  - 1:7        "("
+1:7  - 1:8        argument: identifier `x`
+1:8  - 1:9        ")"
+1:10 - 1:11       "{"
+2:2  - 2:9        cases: match_statement_case
+2:2  - 2:3          pattern: match_literal_pattern
+2:2  - 2:3            literal: number `1`
+2:4  - 2:6          "=>"
+2:7  - 2:9          body: statement_block
+2:7  - 2:8            "{"
+2:8  - 2:9            "}"
+2:10 - 2:14       comment `// c`
+3:2  - 3:9        cases: match_statement_case
+3:2  - 3:3          pattern: match_wildcard_pattern `_`
+3:4  - 3:6          "=>"
+3:7  - 3:9          body: statement_block
+3:7  - 3:8            "{"
+3:8  - 3:9            "}"
+4:0  - 4:1        "}"
+4:2  - 4:6      comment `// d`
+5:0  - 5:4      expression_statement
+5:0  - 5:3        call_expression
+5:0  - 5:1          function: identifier `f`
+5:1  - 5:3          arguments: arguments
+5:1  - 5:2            "("
+5:2  - 5:3            ")"
+5:3  - 5:4        ";"
+
+================================================================================
+As expression at the end of a block
+:cst
+================================================================================
+
+function g() { z as number }
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:28     function_declaration
+1:0  - 1:8        "function"
+1:9  - 1:10       name: identifier `g`
+1:10 - 1:12       parameters: formal_parameters
+1:10 - 1:11         "("
+1:11 - 1:12         ")"
+1:13 - 1:28       body: statement_block
+1:13 - 1:14         "{"
+1:15 - 1:26         expression_statement
+1:15 - 1:26           as_expression
+1:15 - 1:16             expression: identifier `z`
+1:17 - 1:19             "as"
+1:20 - 1:26             type_annotation: number_type_annotation
+1:20 - 1:26               "number"
+1:27 - 1:28         "}"
+
+================================================================================
+Ampersand that starts no character reference in a JSX string
+:cst
+================================================================================
+
+<b c="d&e" />;
+<b c="d&amp;e" />;
+<b c='f&#x00A3;g&h' />;
+
+--------------------------------------------------------------------------------
+
+1:0  - 4:0    program
+1:0  - 1:14     expression_statement
+1:0  - 1:13       jsx_self_closing_element
+1:0  - 1:1          "<"
+1:1  - 1:2          name: identifier `b`
+1:3  - 1:10         attribute: jsx_attribute
+1:3  - 1:4            property_identifier `c`
+1:4  - 1:5            "="
+1:5  - 1:10           string
+1:5  - 1:6              "\""
+1:6  - 1:9              string_fragment `d&e`
+1:9  - 1:10             "\""
+1:11 - 1:13         "/>"
+1:13 - 1:14       ";"
+2:0  - 2:18     expression_statement
+2:0  - 2:17       jsx_self_closing_element
+2:0  - 2:1          "<"
+2:1  - 2:2          name: identifier `b`
+2:3  - 2:14         attribute: jsx_attribute
+2:3  - 2:4            property_identifier `c`
+2:4  - 2:5            "="
+2:5  - 2:14           string
+2:5  - 2:6              "\""
+2:6  - 2:7              string_fragment `d`
+2:7  - 2:12             html_character_reference `&amp;`
+2:12 - 2:13             string_fragment `e`
+2:13 - 2:14             "\""
+2:15 - 2:17         "/>"
+2:17 - 2:18       ";"
+3:0  - 3:23     expression_statement
+3:0  - 3:22       jsx_self_closing_element
+3:0  - 3:1          "<"
+3:1  - 3:2          name: identifier `b`
+3:3  - 3:19         attribute: jsx_attribute
+3:3  - 3:4            property_identifier `c`
+3:4  - 3:5            "="
+3:5  - 3:19           string
+3:5  - 3:6              "'"
+3:6  - 3:7              string_fragment `f`
+3:7  - 3:15             html_character_reference `&#x00A3;`
+3:15 - 3:18             string_fragment `g&h`
+3:18 - 3:19             "'"
+3:20 - 3:22         "/>"
+3:22 - 3:23       ";"
+
+================================================================================
+Arrow function body that is an object with a label-like key
+:cst
+================================================================================
+
+f(e => { label: 42 });
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:22     expression_statement
+1:0  - 1:21       call_expression
+1:0  - 1:1          function: identifier `f`
+1:1  - 1:21         arguments: arguments
+1:1  - 1:2            "("
+1:2  - 1:20           arrow_function
+1:2  - 1:3              parameter: identifier `e`
+1:4  - 1:6              "=>"
+1:7  - 1:20             body: object
+1:7  - 1:8                "{"
+1:9  - 1:18               pair
+1:9  - 1:14                 key: property_identifier `label`
+1:14 - 1:15                 ":"
+1:16 - 1:18                 value: number `42`
+1:19 - 1:20               "}"
+1:20 - 1:21           ")"
+1:21 - 1:22       ";"
