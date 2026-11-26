@@ -23,6 +23,7 @@ const CONTEXTUAL_KEYWORDS = [
   'hook',
   'match',
   'renders',
+  'enum',
   'of',
   'abstract',
   'readonly',
@@ -192,6 +193,7 @@ export default grammar(JavaScript, {
       $.type_alias,
       $.opaque_type,
       $.interface_declaration,
+      $.enum_declaration,
       $.component_declaration,
       $.hook_declaration,
       $.declare_type_alias,
@@ -202,6 +204,7 @@ export default grammar(JavaScript, {
       $.declare_hook,
       $.declare_component,
       $.declare_variable,
+      $.declare_enum,
       $.declare_module,
       $.declare_module_exports,
       $.declare_namespace,
@@ -353,6 +356,8 @@ export default grammar(JavaScript, {
       $._type_semicolon,
     ),
 
+    declare_enum: $ => seq('declare', $._enum),
+
     declare_module: $ => prec.right(seq(
       'declare',
       'module',
@@ -419,6 +424,7 @@ export default grammar(JavaScript, {
       $.type_alias,
       alias($._declare_opaque_type, $.declare_opaque_type),
       $.interface_declaration,
+      alias($._enum, $.declare_enum),
       alias($._declare_namespace, $.declare_namespace),
     ),
 
@@ -451,6 +457,76 @@ export default grammar(JavaScript, {
       field('expression', $.string),
       ')',
     ),
+
+    // Enums
+
+    enum_declaration: $ => $._enum,
+
+    _enum: $ => seq(
+      optional('const'),
+      'enum',
+      field('id', $.identifier),
+      field('body', choice(
+        $.enum_string_body,
+        $.enum_number_body,
+        $.enum_boolean_body,
+        $.enum_big_int_body,
+        $.enum_symbol_body,
+      )),
+    ),
+
+    // The body kind follows the explicit `of` type, or else the first member.
+    // Later members of any kind are accepted, as Flow's parser does.
+    enum_string_body: $ => choice(
+      seq('of', 'string', enumMembers($._enum_member)),
+      enumMembersFirst(choice($.enum_defaulted_member, $.enum_string_member), $._enum_member),
+      seq('{', optional(seq('...', optional(','))), '}'),
+    ),
+
+    enum_number_body: $ => choice(
+      seq('of', 'number', enumMembers($._enum_member)),
+      enumMembersFirst($.enum_number_member, $._enum_member),
+    ),
+
+    enum_boolean_body: $ => choice(
+      seq('of', 'boolean', enumMembers($._enum_member)),
+      enumMembersFirst($.enum_boolean_member, $._enum_member),
+    ),
+
+    enum_big_int_body: $ => choice(
+      seq('of', 'bigint', enumMembers($._enum_member)),
+      enumMembersFirst($.enum_big_int_member, $._enum_member),
+    ),
+
+    enum_symbol_body: $ => seq(
+      'of',
+      'symbol',
+      enumMembers($._enum_member),
+    ),
+
+    _enum_member: $ => choice(
+      $.enum_defaulted_member,
+      $.enum_string_member,
+      $.enum_number_member,
+      $.enum_boolean_member,
+      $.enum_big_int_member,
+    ),
+
+    enum_defaulted_member: $ => field('id', $._enum_member_id),
+    enum_string_member: $ => seq(field('id', $._enum_member_id), '=', field('init', $.string)),
+    enum_number_member: $ => seq(field('id', $._enum_member_id), '=', field('init', choice($.number, alias($._negative_number, $.number)))),
+    enum_boolean_member: $ => seq(field('id', $._enum_member_id), '=', field('init', choice($.true, $.false))),
+    enum_big_int_member: $ => seq(field('id', $._enum_member_id), '=', field('init', alias($._bigint, $.number))),
+
+    _enum_member_id: $ => choice(alias(choice($.identifier, $._reserved_identifier), $.identifier), $.string),
+
+    _negative_number: _ => token(seq('-', /\s*/, choice(
+      /\d[\d_]*(\.[\d_]*)?([eE][+-]?\d[\d_]*)?/,
+      /\.\d[\d_]*([eE][+-]?\d[\d_]*)?/,
+      /0[xX][\da-fA-F_]+/,
+      /0[bB][01_]+/,
+      /0[oO][0-7_]+/,
+    ))),
 
     // Components and hooks
 
@@ -1940,7 +2016,38 @@ export default grammar(JavaScript, {
   },
 });
 
+/**
+ * Enum body members: `{A, B, ...}`.
+ *
+ * @param {RuleOrLiteral} member
+ * @returns {SeqRule}
+ */
+function enumMembers(member) {
+  return seq(
+    '{',
+    optional(seq(
+      sepBy1(',', choice(field('members', member), '...')),
+      optional(','),
+    )),
+    '}',
+  );
+}
 
+/**
+ * Enum body members with at least one leading member.
+ *
+ * @param {RuleOrLiteral} member
+ * @returns {SeqRule}
+ */
+function enumMembersFirst(first, rest) {
+  return seq(
+    '{',
+    field('members', first),
+    repeat(seq(',', choice(field('members', rest), '...'))),
+    optional(','),
+    '}',
+  );
+}
 
 /**
  * Creates a rule to match one or more of the rules separated by a comma.

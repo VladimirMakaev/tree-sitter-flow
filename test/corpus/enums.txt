@@ -1,0 +1,148 @@
+============================================================
+Enums
+============================================================
+
+enum Status {
+  Active,
+  Off,
+}
+enum S of string {
+  A = 'a',
+  B = 'b',
+}
+enum N of number {
+  One = 1,
+  Two = 2,
+}
+enum B of boolean {
+  Yes = true,
+  No = false,
+}
+enum Sym of symbol {
+  X,
+}
+enum Big of bigint {
+  A = 1n,
+}
+
+---
+
+(program
+  (enum_declaration
+    id: (identifier)
+    body: (enum_string_body
+      members: (enum_defaulted_member
+        id: (identifier))
+      members: (enum_defaulted_member
+        id: (identifier))))
+  (enum_declaration
+    id: (identifier)
+    body: (enum_string_body
+      members: (enum_string_member
+        id: (identifier)
+        init: (string
+          (string_fragment)))
+      members: (enum_string_member
+        id: (identifier)
+        init: (string
+          (string_fragment)))))
+  (enum_declaration
+    id: (identifier)
+    body: (enum_number_body
+      members: (enum_number_member
+        id: (identifier)
+        init: (number))
+      members: (enum_number_member
+        id: (identifier)
+        init: (number))))
+  (enum_declaration
+    id: (identifier)
+    body: (enum_boolean_body
+      members: (enum_boolean_member
+        id: (identifier)
+        init: (true))
+      members: (enum_boolean_member
+        id: (identifier)
+        init: (false))))
+  (enum_declaration
+    id: (identifier)
+    body: (enum_symbol_body
+      members: (enum_defaulted_member
+        id: (identifier))))
+  (enum_declaration
+    id: (identifier)
+    body: (enum_big_int_body
+      members: (enum_big_int_member
+        id: (identifier)
+        init: (number)))))
+
+============================================================
+Enums with implicit kinds and unknown members
+============================================================
+
+enum A {
+  X = 1,
+  Y = 2,
+}
+enum B {
+  X = 'x',
+  ...
+}
+export enum C {}
+export default enum D {E}
+
+---
+
+(program
+  (enum_declaration
+    id: (identifier)
+    body: (enum_number_body
+      members: (enum_number_member
+        id: (identifier)
+        init: (number))
+      members: (enum_number_member
+        id: (identifier)
+        init: (number))))
+  (enum_declaration
+    id: (identifier)
+    body: (enum_string_body
+      members: (enum_string_member
+        id: (identifier)
+        init: (string
+          (string_fragment)))))
+  (export_statement
+    declaration: (enum_declaration
+      id: (identifier)
+      body: (enum_string_body)))
+  (export_statement
+    declaration: (enum_declaration
+      id: (identifier)
+      body: (enum_string_body
+        members: (enum_defaulted_member
+          id: (identifier))))))
+
+============================================================
+Declare enums
+============================================================
+
+declare enum A {B, C}
+declare export enum D of string {E = 'e'}
+
+---
+
+(program
+  (declare_enum
+    id: (identifier)
+    body: (enum_string_body
+      members: (enum_defaulted_member
+        id: (identifier))
+      members: (enum_defaulted_member
+        id: (identifier))))
+  (declare_export_declaration
+    declaration: (declare_enum
+      id: (identifier)
+      body: (enum_string_body
+        members: (enum_string_member
+          id: (identifier)
+          init: (string
+            (string_fragment)))))))

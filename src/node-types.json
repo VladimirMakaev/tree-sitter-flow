@@ -20,6 +20,10 @@
         "named": true
       },
       {
+        "type": "declare_enum",
+        "named": true
+      },
+      {
         "type": "declare_export_all_declaration",
         "named": true
       },
@@ -61,6 +65,10 @@
       },
       {
         "type": "declare_variable",
+        "named": true
+      },
+      {
+        "type": "enum_declaration",
         "named": true
       },
       {
@@ -3372,6 +3380,48 @@
     }
   },
   {
+    "type": "declare_enum",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "enum_big_int_body",
+            "named": true
+          },
+          {
+            "type": "enum_boolean_body",
+            "named": true
+          },
+          {
+            "type": "enum_number_body",
+            "named": true
+          },
+          {
+            "type": "enum_string_body",
+            "named": true
+          },
+          {
+            "type": "enum_symbol_body",
+            "named": true
+          }
+        ]
+      },
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "declare_export_all_declaration",
     "named": true,
     "fields": {
@@ -3459,6 +3509,10 @@
           },
           {
             "type": "declare_component",
+            "named": true
+          },
+          {
+            "type": "declare_enum",
             "named": true
           },
           {
@@ -5052,6 +5106,352 @@
     "type": "empty_type_annotation",
     "named": true,
     "fields": {}
+  },
+  {
+    "type": "enum_big_int_body",
+    "named": true,
+    "fields": {
+      "members": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "enum_big_int_member",
+            "named": true
+          },
+          {
+            "type": "enum_boolean_member",
+            "named": true
+          },
+          {
+            "type": "enum_defaulted_member",
+            "named": true
+          },
+          {
+            "type": "enum_number_member",
+            "named": true
+          },
+          {
+            "type": "enum_string_member",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_big_int_member",
+    "named": true,
+    "fields": {
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "init": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "number",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_boolean_body",
+    "named": true,
+    "fields": {
+      "members": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "enum_big_int_member",
+            "named": true
+          },
+          {
+            "type": "enum_boolean_member",
+            "named": true
+          },
+          {
+            "type": "enum_defaulted_member",
+            "named": true
+          },
+          {
+            "type": "enum_number_member",
+            "named": true
+          },
+          {
+            "type": "enum_string_member",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_boolean_member",
+    "named": true,
+    "fields": {
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "init": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_declaration",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "enum_big_int_body",
+            "named": true
+          },
+          {
+            "type": "enum_boolean_body",
+            "named": true
+          },
+          {
+            "type": "enum_number_body",
+            "named": true
+          },
+          {
+            "type": "enum_string_body",
+            "named": true
+          },
+          {
+            "type": "enum_symbol_body",
+            "named": true
+          }
+        ]
+      },
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_defaulted_member",
+    "named": true,
+    "fields": {
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_number_body",
+    "named": true,
+    "fields": {
+      "members": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "enum_big_int_member",
+            "named": true
+          },
+          {
+            "type": "enum_boolean_member",
+            "named": true
+          },
+          {
+            "type": "enum_defaulted_member",
+            "named": true
+          },
+          {
+            "type": "enum_number_member",
+            "named": true
+          },
+          {
+            "type": "enum_string_member",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_number_member",
+    "named": true,
+    "fields": {
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "init": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "number",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_string_body",
+    "named": true,
+    "fields": {
+      "members": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "enum_big_int_member",
+            "named": true
+          },
+          {
+            "type": "enum_boolean_member",
+            "named": true
+          },
+          {
+            "type": "enum_defaulted_member",
+            "named": true
+          },
+          {
+            "type": "enum_number_member",
+            "named": true
+          },
+          {
+            "type": "enum_string_member",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_string_member",
+    "named": true,
+    "fields": {
+      "id": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "init": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "enum_symbol_body",
+    "named": true,
+    "fields": {
+      "members": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "enum_big_int_member",
+            "named": true
+          },
+          {
+            "type": "enum_boolean_member",
+            "named": true
+          },
+          {
+            "type": "enum_defaulted_member",
+            "named": true
+          },
+          {
+            "type": "enum_number_member",
+            "named": true
+          },
+          {
+            "type": "enum_string_member",
+            "named": true
+          }
+        ]
+      }
+    }
   },
   {
     "type": "exists_type_annotation",
@@ -16322,6 +16722,10 @@
   },
   {
     "type": "empty",
+    "named": false
+  },
+  {
+    "type": "enum",
     "named": false
   },
   {
