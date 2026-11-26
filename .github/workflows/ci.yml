@@ -22,8 +22,8 @@ jobs:
     name: Generated parser is up to date
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
       - uses: tree-sitter/setup-action/cli@v2
@@ -47,8 +47,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
       - uses: tree-sitter/setup-action/cli@v2
@@ -57,7 +57,7 @@ jobs:
       - name: Install tree-sitter-javascript
         # tree-sitter.json applies tree-sitter-javascript's queries too.
         run: npm install --ignore-scripts
-      - name: Corpus, highlight and tag tests; Node, Rust, Python, Go and Swift bindings
+      - name: Corpus, highlight and tag tests; Node, Rust, Python and Go bindings
         uses: tree-sitter/parser-test-action@v2
         with:
           generate: false
@@ -65,14 +65,19 @@ jobs:
           test-node: true
           test-python: true
           test-go: true
-          test-swift: ${{runner.os == 'macOS'}}
+      - name: Test the Swift binding
+        # With the runner's own Swift, which matches its macOS SDK.
+        if: runner.os == 'macOS'
+        run: |-
+          swift build --build-tests
+          swift test --skip-build
       - name: Build the C library with CMake
         shell: bash
         run: |-
           cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
           cmake --build build/cmake --config Release
       - name: Check out the tree-sitter runtime
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: tree-sitter/tree-sitter
           ref: ${{env.TREE_SITTER_VERSION}}
@@ -89,8 +94,8 @@ jobs:
     name: Rust crate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - name: Package
         run: |-
           cargo package --locked
@@ -106,8 +111,8 @@ jobs:
     name: Parse rate on public suites
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
       - uses: tree-sitter/setup-action/cli@v2
@@ -116,14 +121,15 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts
       - name: Cache suites
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/suites
           key: suites-${{hashFiles('script/fetch-suites.sh')}}
       - name: Fetch suites at pinned commits
         run: npm run suites:fetch
       - name: Every file that Flow accepts parses without ERROR or MISSING
-        run: npm run suites -- --check --perf
+        # Run directly: `npm run` would put node_modules/.bin first on PATH.
+        run: node script/run-suites.mjs --check --perf
         env:
           TREE_SITTER: tree-sitter
 
@@ -131,12 +137,12 @@ jobs:
     name: tree-sitter-javascript corpus
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: tree-sitter/setup-action/cli@v2
         with:
           tree-sitter-ref: ${{env.TREE_SITTER_VERSION}}
       - name: Cache suites
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/suites
           key: suites-${{hashFiles('script/fetch-suites.sh')}}
@@ -151,14 +157,14 @@ jobs:
     name: Hermes comparison
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
       - name: Install dependencies and build the Node binding
         run: npm install
       - name: Cache suites
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/suites
           key: suites-${{hashFiles('script/fetch-suites.sh')}}
