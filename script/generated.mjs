@@ -177,8 +177,38 @@ const CLASS_MODIFIERS = ['declare', 'override', 'readonly', '+', '-', 'private',
   'async', 'get', 'set', 'declare static', 'static readonly', 'static async', 'static +', 'override readonly'];
 const TYPED_MEMBERS = ['b: T', 'b?: T', 'b: T = 1', 'b(): T {}', 'b<T>(): T {}', '[b]: T', '#b: T', 'b(c: T) {}'];
 
+// Member name forms: escaped and non-ASCII names, private names, strings,
+// every numeric form, computed keys and keyword names.
+const MEMBER_NAMES = ['b', '\\u2118', '\\u{6F}', '\\u0275fac', 'a\\u0062', '\u2118', 'ñame', '#b', "'a'", '"a"', '1',
+  '.1', '1.', '1e3', '1e-3', '0x1', '0b1', '0o1', '1n', '1_000', '[a]', 'static', 'get', 'set', 'async', 'in',
+  'declare', 'readonly', 'abstract', 'of'];
+const NAMED_TYPED_MEMBERS = ['N: T', 'N(): T {}', 'N<T>(c: T) {}', 'N?: T = 1', 'N() {}', 'N = 1'];
+const NAME_MODIFIERS = ['', 'static', 'get', 'set', 'async', 'static async', 'static get', 'declare', 'override',
+  'readonly', '+', 'private', 'static +', 'declare static', 'async *', 'static async *'];
+
 function members() {
   const out = new Set();
+  for (const modifier of NAME_MODIFIERS) {
+    for (const name of MEMBER_NAMES) {
+      for (const member of NAMED_TYPED_MEMBERS) {
+        // A modifier alone on its line before a member without a Flow type
+        // reads as in tree-sitter-javascript, which npm run js-identity
+        // checks; only a variance sigil, which cannot be a field, goes on.
+        const typed = member.includes(': T') || member.includes('(c: T)');
+        const seps = typed || modifier.endsWith('+') ? [' ', '\n  '] : [' '];
+        for (const sep of seps) out.add(`class K { ${modifier}${modifier ? sep : ''}${member.replace('N', name)} }`);
+      }
+    }
+  }
+  // The same members after a field with a type or a value on the same line,
+  // with no `;`, which Flow's parser takes.
+  for (const field of ['a = 1', 'a: T', 'a: T = b', 'a = b ? c : d', 'a = () => b']) {
+    for (const modifier of ['', 'static ', 'get ', 'async ', 'static async ', 'declare ', '+']) {
+      for (const name of MEMBER_NAMES) {
+        for (const member of NAMED_TYPED_MEMBERS) out.add(`class K { ${field} ${modifier}${member.replace('N', name)} }`);
+      }
+    }
+  }
   for (const modifier of CLASS_MODIFIERS) {
     for (const member of TYPED_MEMBERS) {
       for (const sep of [' ', '\n  ']) {

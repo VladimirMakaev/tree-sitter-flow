@@ -195,6 +195,15 @@ const MEMBERS = ['b() {}', '*b() {}', 'b = 1', 'b', '[b]() {}', '[b] = 1', '#b()
 const MEMBER_BODIES = ['class K { M\n  B }', 'class K { M B }', 'class K {\n  M\n  B\n}', 'class K { M\n  B; c() {} }',
   'x = { M\n  B };', 'x = { M B };'];
 
+// Member name forms, after every modifier.
+export const MEMBER_NAMES = ['b', '\\u2118', '\\u{6F}', '\\u0275fac', 'a\\u0062', '\u2118', 'ñame', '#b', '#\\u2118',
+  "'a'", '"a"', '1', '.1', '1.', '1e3', '1e-3', '1.5e+2', '0x1', '0b1', '0o1', '1n', '1_000', '[a]', '[a + 1]',
+  'static', 'get', 'set', 'async', 'in', 'instanceof', 'constructor', 'declare', 'readonly', 'abstract', 'of'];
+const NAME_MODIFIERS = ['', 'static', 'get', 'set', 'async', 'static async', 'static get', 'static set', 'async *',
+  'static async *', '*', 'accessor', 'static accessor'];
+const NAMED_MEMBERS = ['N() {}', 'N = 1', 'N'];
+const NAME_BODIES = ['class K { M N_ }', 'class K {\n  M\n  N_\n}', 'class K { M N_; z() {} }', 'x = { M N_ };'];
+
 // A `;` after a comment and a line break.
 const SEMICOLON_STATEMENTS = ['let a', 'var a = 1', 'var a = 1\n    , b', 'const a = 1', 'x = a', 'f()', 'a++',
   'for (;;) {\n  break S\n}', 'for (;;) {\n  continue S\n}', 'function g() {\n  return S\n}',
@@ -204,6 +213,15 @@ const SEMICOLON_COMMENTS = [' // c\n  ;', ' /* c */\n;', ' /* c\n  d */;', ' /* 
 
 function generated() {
   const out = new Set();
+  for (const body of NAME_BODIES) {
+    for (const modifier of NAME_MODIFIERS) {
+      for (const name of MEMBER_NAMES) {
+        for (const member of NAMED_MEMBERS) {
+          out.add(body.replace('M', modifier).replace('N_', member.replace('N', name)));
+        }
+      }
+    }
+  }
   for (const body of MEMBER_BODIES) {
     for (const modifier of MODIFIERS) {
       for (const member of MEMBERS) out.add(body.replace('M', modifier).replace('B', member));
