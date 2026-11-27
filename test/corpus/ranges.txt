@@ -663,3 +663,363 @@ f(e => { label: 42 });
 1:19 - 1:20               "}"
 1:20 - 1:21           ")"
 1:21 - 1:22       ";"
+
+================================================================================
+Function followed by two block comments that span lines
+:cst
+================================================================================
+
+function f() { return 1; } /**
+ * c
+ */ /**
+ * d
+ */
+var a = 1;
+
+--------------------------------------------------------------------------------
+
+1:0  - 7:0    program
+1:0  - 1:26     function_declaration
+1:0  - 1:8        "function"
+1:9  - 1:10       name: identifier `f`
+1:10 - 1:12       parameters: formal_parameters
+1:10 - 1:11         "("
+1:11 - 1:12         ")"
+1:13 - 1:26       body: statement_block
+1:13 - 1:14         "{"
+1:15 - 1:24         return_statement
+1:15 - 1:21           "return"
+1:22 - 1:23           number `1`
+1:23 - 1:24           ";"
+1:25 - 1:26         "}"
+1:27 - 3:3      comment
+1:27 - 1:31       `/**\n`
+2:27 - 2:5        ` * c\n`
+3:27 - 3:3        ` */`
+3:4  - 5:3      comment
+3:4  - 3:8        `/**\n`
+4:4  - 4:5        ` * d\n`
+5:4  - 5:3        ` */`
+6:0  - 6:10     variable_declaration
+6:0  - 6:3        "var"
+6:4  - 6:9        variable_declarator
+6:4  - 6:5          name: identifier `a`
+6:6  - 6:7          "="
+6:8  - 6:9          value: number `1`
+6:9  - 6:10       ";"
+
+================================================================================
+Semicolon after a line comment and a line break
+:cst
+================================================================================
+
+let a // c
+  ;
+
+--------------------------------------------------------------------------------
+
+1:0  - 3:0    program
+1:0  - 1:5      lexical_declaration
+1:0  - 1:3        "let"
+1:4  - 1:5        variable_declarator
+1:4  - 1:5          name: identifier `a`
+1:6  - 1:10     comment `// c`
+2:2  - 2:3      empty_statement
+2:2  - 2:3        ";"
+
+================================================================================
+Comma-first declaration with a semicolon after a comment
+:cst
+================================================================================
+
+function g() {
+  var a = 1
+    , b // c
+    ;
+}
+
+--------------------------------------------------------------------------------
+
+1:0  - 6:0    program
+1:0  - 5:1      function_declaration
+1:0  - 1:8        "function"
+1:9  - 1:10       name: identifier `g`
+1:10 - 1:12       parameters: formal_parameters
+1:10 - 1:11         "("
+1:11 - 1:12         ")"
+1:13 - 5:1        body: statement_block
+1:13 - 1:14         "{"
+2:2  - 3:7          variable_declaration
+2:2  - 2:5            "var"
+2:6  - 2:11           variable_declarator
+2:6  - 2:7              name: identifier `a`
+2:8  - 2:9              "="
+2:10 - 2:11             value: number `1`
+3:4  - 3:5            ","
+3:6  - 3:7            variable_declarator
+3:6  - 3:7              name: identifier `b`
+3:8  - 3:12         comment `// c`
+4:4  - 4:5          empty_statement
+4:4  - 4:5            ";"
+5:0  - 5:1          "}"
+
+================================================================================
+Break with a semicolon after a block comment that spans lines
+:cst
+================================================================================
+
+for (;;) {
+  break /* c
+  d */;
+}
+
+--------------------------------------------------------------------------------
+
+1:0  - 5:0    program
+1:0  - 4:1      for_statement
+1:0  - 1:3        "for"
+1:4  - 1:5        "("
+1:5  - 1:6        initializer: empty_statement
+1:5  - 1:6          ";"
+1:6  - 1:7        condition: empty_statement
+1:6  - 1:7          ";"
+1:7  - 1:8        ")"
+1:9  - 4:1        body: statement_block
+1:9  - 1:10         "{"
+2:2  - 2:7          break_statement
+2:2  - 2:7            "break"
+2:8  - 3:6          comment
+2:8  - 2:13           `/* c\n`
+3:8  - 3:6            `  d */`
+3:6  - 3:7          empty_statement
+3:6  - 3:7            ";"
+4:0  - 4:1          "}"
+
+================================================================================
+Static async field before a method on the next line
+:cst
+================================================================================
+
+class A { static async
+  b() {} }
+
+--------------------------------------------------------------------------------
+
+1:0  - 3:0    program
+1:0  - 2:10     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `A`
+1:8  - 2:10       body: class_body
+1:8  - 1:9          "{"
+1:10 - 1:22         member: field_definition
+1:10 - 1:16           "static"
+1:17 - 1:22           property: property_identifier `async`
+2:2  - 2:8          member: method_definition
+2:2  - 2:3            name: property_identifier `b`
+2:3  - 2:5            parameters: formal_parameters
+2:3  - 2:4              "("
+2:4  - 2:5              ")"
+2:6  - 2:8            body: statement_block
+2:6  - 2:7              "{"
+2:7  - 2:8              "}"
+2:9  - 2:10         "}"
+
+================================================================================
+Modifiers alone on their line before members
+:cst
+================================================================================
+
+class A {
+  static
+  b() {}
+  get
+  c() {}
+  set
+  d(e) {}
+  async
+  *f() {}
+  static set
+  g(h) {}
+  accessor
+  i = 1
+}
+
+--------------------------------------------------------------------------------
+
+1:0   - 15:0    program
+1:0   - 14:1      class_declaration
+1:0   - 1:5         "class"
+1:6   - 1:7         name: identifier `A`
+1:8   - 14:1        body: class_body
+1:8   - 1:9           "{"
+2:2   - 2:8           member: field_definition
+2:2   - 2:8             property: property_identifier `static`
+3:2   - 3:8           member: method_definition
+3:2   - 3:3             name: property_identifier `b`
+3:3   - 3:5             parameters: formal_parameters
+3:3   - 3:4               "("
+3:4   - 3:5               ")"
+3:6   - 3:8             body: statement_block
+3:6   - 3:7               "{"
+3:7   - 3:8               "}"
+4:2   - 4:5           member: field_definition
+4:2   - 4:5             property: property_identifier `get`
+5:2   - 5:8           member: method_definition
+5:2   - 5:3             name: property_identifier `c`
+5:3   - 5:5             parameters: formal_parameters
+5:3   - 5:4               "("
+5:4   - 5:5               ")"
+5:6   - 5:8             body: statement_block
+5:6   - 5:7               "{"
+5:7   - 5:8               "}"
+6:2   - 6:5           member: field_definition
+6:2   - 6:5             property: property_identifier `set`
+7:2   - 7:9           member: method_definition
+7:2   - 7:3             name: property_identifier `d`
+7:3   - 7:6             parameters: formal_parameters
+7:3   - 7:4               "("
+7:4   - 7:5               identifier `e`
+7:5   - 7:6               ")"
+7:7   - 7:9             body: statement_block
+7:7   - 7:8               "{"
+7:8   - 7:9               "}"
+8:2   - 9:9           member: method_definition
+8:2   - 8:7             "async"
+9:2   - 9:3             "*"
+9:3   - 9:4             name: property_identifier `f`
+9:4   - 9:6             parameters: formal_parameters
+9:4   - 9:5               "("
+9:5   - 9:6               ")"
+9:7   - 9:9             body: statement_block
+9:7   - 9:8               "{"
+9:8   - 9:9               "}"
+10:2  - 10:12         member: field_definition
+10:2  - 10:8            "static"
+10:9  - 10:12           property: property_identifier `set`
+11:2  - 11:9          member: method_definition
+11:2  - 11:3            name: property_identifier `g`
+11:3  - 11:6            parameters: formal_parameters
+11:3  - 11:4              "("
+11:4  - 11:5              identifier `h`
+11:5  - 11:6              ")"
+11:7  - 11:9            body: statement_block
+11:7  - 11:8              "{"
+11:8  - 11:9              "}"
+12:2  - 12:10         member: field_definition
+12:2  - 12:10           property: property_identifier `accessor`
+13:2  - 13:7          member: field_definition
+13:2  - 13:3            property: property_identifier `i`
+13:4  - 13:5            "="
+13:6  - 13:7            value: number `1`
+14:0  - 14:1          "}"
+
+================================================================================
+Modifiers alone on their line before typed members
+:cst
+================================================================================
+
+class A {
+  declare
+  b: T;
+  static
+  c: T;
+  readonly
+  d: T;
+  override
+  e(f: T) {}
+  static async
+  g(): T {}
+}
+
+--------------------------------------------------------------------------------
+
+1:0   - 13:0    program
+1:0   - 12:1      class_declaration
+1:0   - 1:5         "class"
+1:6   - 1:7         name: identifier `A`
+1:8   - 12:1        body: class_body
+1:8   - 1:9           "{"
+2:2   - 3:6           member: field_definition
+2:2   - 2:9             "declare"
+3:2   - 3:3             property: property_identifier `b`
+3:3   - 3:6             type_annotation: type_annotation
+3:3   - 3:4               ":"
+3:5   - 3:6               generic_type_annotation
+3:5   - 3:6                 id: identifier `T`
+3:6   - 3:7           ";"
+4:2   - 5:6           member: field_definition
+4:2   - 4:8             "static"
+5:2   - 5:3             property: property_identifier `c`
+5:3   - 5:6             type_annotation: type_annotation
+5:3   - 5:4               ":"
+5:5   - 5:6               generic_type_annotation
+5:5   - 5:6                 id: identifier `T`
+5:6   - 5:7           ";"
+6:2   - 7:6           member: field_definition
+6:2   - 6:10            variance: variance
+6:2   - 6:10              "readonly"
+7:2   - 7:3             property: property_identifier `d`
+7:3   - 7:6             type_annotation: type_annotation
+7:3   - 7:4               ":"
+7:5   - 7:6               generic_type_annotation
+7:5   - 7:6                 id: identifier `T`
+7:6   - 7:7           ";"
+8:2   - 9:12          member: method_definition
+8:2   - 8:10            "override"
+9:2   - 9:3             name: property_identifier `e`
+9:3   - 9:9             parameters: formal_parameters
+9:3   - 9:4               "("
+9:4   - 9:5               identifier `f`
+9:5   - 9:8               type_annotation: type_annotation
+9:5   - 9:6                 ":"
+9:7   - 9:8                 generic_type_annotation
+9:7   - 9:8                   id: identifier `T`
+9:8   - 9:9               ")"
+9:10  - 9:12            body: statement_block
+9:10  - 9:11              "{"
+9:11  - 9:12              "}"
+10:2  - 10:14         member: field_definition
+10:2  - 10:8            "static"
+10:9  - 10:14           property: property_identifier `async`
+11:2  - 11:11         member: method_definition
+11:2  - 11:3            name: property_identifier `g`
+11:3  - 11:5            parameters: formal_parameters
+11:3  - 11:4              "("
+11:4  - 11:5              ")"
+11:5  - 11:8            return_type: type_annotation
+11:5  - 11:6              ":"
+11:7  - 11:8              generic_type_annotation
+11:7  - 11:8                id: identifier `T`
+11:9  - 11:11           body: statement_block
+11:9  - 11:10             "{"
+11:10 - 11:11             "}"
+12:0  - 12:1          "}"
+
+================================================================================
+Getter after a line break in an object literal
+:cst
+================================================================================
+
+x = { get
+  a() {} };
+
+--------------------------------------------------------------------------------
+
+1:0  - 3:0    program
+1:0  - 2:11     expression_statement
+1:0  - 2:10       assignment_expression
+1:0  - 1:1          left: identifier `x`
+1:2  - 1:3          "="
+1:4  - 2:10         right: object
+1:4  - 1:5            "{"
+1:6  - 2:8            method_definition
+1:6  - 1:9              "get"
+2:2  - 2:3              name: property_identifier `a`
+2:3  - 2:5              parameters: formal_parameters
+2:3  - 2:4                "("
+2:4  - 2:5                ")"
+2:6  - 2:8              body: statement_block
+2:6  - 2:7                "{"
+2:7  - 2:8                "}"
+2:9  - 2:10           "}"
+2:10 - 2:11       ";"

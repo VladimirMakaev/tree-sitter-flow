@@ -159,6 +159,25 @@ f<import('a')>();
 f<typeof import('a')>();
 const b = f<import('a').B>();
 f.g<typeof import('a')>('a');
+function f() { return 1; } /**
+ * c
+ */ /**
+ * d
+ */
+var a = 1;
+let a // c
+  ;
+function g() {
+  var a = 1
+    , b // c
+    ;
+}
+for (;;) {
+  break /* c
+  d */;
+}
+class A { static async
+  b() {} }
 
 ---
 
@@ -1447,4 +1466,49 @@ f.g<typeof import('a')>('a');
               (string_fragment)))))
       arguments: (arguments
         (string
-          (string_fragment))))))
+          (string_fragment)))))
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters)
+    body: (statement_block
+      (return_statement
+        (number))))
+  (comment)
+  (comment)
+  (variable_declaration
+    (variable_declarator
+      name: (identifier)
+      value: (number)))
+  (lexical_declaration
+    (variable_declarator
+      name: (identifier)))
+  (comment)
+  (empty_statement)
+  (function_declaration
+    name: (identifier)
+    parameters: (formal_parameters)
+    body: (statement_block
+      (variable_declaration
+        (variable_declarator
+          name: (identifier)
+          value: (number))
+        (variable_declarator
+          name: (identifier)))
+      (comment)
+      (empty_statement)))
+  (for_statement
+    initializer: (empty_statement)
+    condition: (empty_statement)
+    body: (statement_block
+      (break_statement)
+      (comment)
+      (empty_statement)))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block)))))

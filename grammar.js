@@ -101,6 +101,9 @@ export default grammar(JavaScript, {
     $._jsx_string_fragment_double,
     $._jsx_string_fragment_single,
     $._statement_end,
+    $._modifier_continues,
+    $._async_modifier_continues,
+    $._accessor_modifier_continues,
   ]),
 
   precedences: ($, previous) => previous.concat([
@@ -125,6 +128,13 @@ export default grammar(JavaScript, {
   // Two of tree-sitter-javascript's conflicts do not arise in this grammar.
   conflicts: ($, previous) => previous.filter(c => !isConflict(c, ['primary_expression', 'method_definition']) &&
     !isConflict(c, ['variable_declarator', '_for_header'])).concat([
+    [$._class_method_modifiers],
+    [$.arrow_function, $.hook_declaration, $._method_modifiers],
+    [$.arrow_function, $.component_declaration, $._method_modifiers],
+    [$.primary_expression, $.arrow_function, $._method_modifiers],
+    [$.arrow_function, $._method_modifiers],
+    [$.record_declaration_static_property, $._method_modifiers],
+    [$.primary_expression, $._method_modifiers],
     [$.statement, $.match_statement_case],
     [$._primary_type, $.tuple_type_labeled_element],
     [$.boolean_literal_type_annotation, $.tuple_type_labeled_element],
@@ -132,7 +142,7 @@ export default grammar(JavaScript, {
     [$.import_specifier, $._import_identifier],
     [$._declare_class_bare_property, $.object_type_property, $.object_type_indexer, $.object_type_internal_slot],
     [$._declare_class_bare_property, $.object_type_property],
-    [$.field_definition, $._separated_field_definition, $._bare_field_definition, $.abstract_property_definition, $._method_modifiers, $.abstract_method_definition],
+    [$.field_definition, $._separated_field_definition, $._bare_field_definition, $.abstract_property_definition, $._class_method_modifiers, $.abstract_method_definition],
     [$.object_type_property, $.variance],
     [$.object_type_property, $.object_type_mapped_type_property, $.variance],
     [$.jsx_namespace_name, $.type_operator],
@@ -184,7 +194,6 @@ export default grammar(JavaScript, {
     [$._primary_type, $.qualified_type_identifier],
     [$.sequence_expression, $.match_expression_case],
     [$.match_expression, $.match_statement],
-    [$.record_declaration_static_property, $._method_modifiers],
     [$._property_name, $.record_declaration_property],
     [$.type_operator, $.variance],
     [$.generic_type_annotation, $._qualified_id],
@@ -204,11 +213,6 @@ export default grammar(JavaScript, {
     [$.primary_expression, $.match_expression],
     [$._method_modifiers],
     [$.primary_expression, $._property_name, $.match_expression, $.match_statement],
-    [$.primary_expression, $.arrow_function, $._method_modifiers],
-    [$.arrow_function, $.hook_declaration, $._method_modifiers],
-    [$.arrow_function, $.component_declaration, $._method_modifiers],
-    [$.primary_expression, $._method_modifiers],
-    [$.arrow_function, $._method_modifiers],
     [$.primary_expression, $.match_expression, $.match_statement],
     [$.primary_expression, $.interface_declaration],
     [$.primary_expression, $.record_expression],
@@ -1479,7 +1483,7 @@ export default grammar(JavaScript, {
     class_body: $ => seq(
       '{',
       repeat(choice(
-        seq(field('member', $.method_definition), optional(';')),
+        seq(field('member', alias($._class_method_definition, $.method_definition)), optional(';')),
         seq(field('member', choice($.declare_method_definition, $.abstract_method_definition)), $._semicolon_or_signature),
         seq(field('member', choice($.field_definition, $.abstract_property_definition)), $._semicolon),
         // As in Flow's parser, a field with a type or a value needs no `;`
@@ -1494,18 +1498,24 @@ export default grammar(JavaScript, {
       '}',
     ),
 
+    // A modifier that tree-sitter-javascript does not have, or `async`, `get`
+    // and `set`, is followed by `_modifier_continues`: the scanner emits it
+    // when the member goes on, on the same line or, after a line break, when
+    // the member has a Flow type, as in `declare` then `b: T`. Otherwise, as
+    // in tree-sitter-javascript, the word is a field of its own: `static
+    // async` then `b() {}` is a field `async` and a method `b`.
     _class_member_modifiers: $ => repeat1(choice(
-      field('ts_accessibility', choice('private', 'protected', 'public')),
-      'static',
-      'declare',
-      'override',
+      seq(field('ts_accessibility', choice('private', 'protected', 'public')), $._modifier_continues),
+      seq('static', $._modifier_continues),
+      seq('declare', $._modifier_continues),
+      seq('override', $._modifier_continues),
       'accessor',
     )),
 
     field_definition: $ => seq(
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
-      optional(field('variance', $.variance)),
+      optional(seq(field('variance', $.variance), $._modifier_continues)),
       field('property', $._property_name),
       optional(choice('?', '!')),
       optional(field('type_annotation', $.type_annotation)),
@@ -1515,7 +1525,7 @@ export default grammar(JavaScript, {
     _separated_field_definition: $ => seq(
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
-      optional(field('variance', $.variance)),
+      optional(seq(field('variance', $.variance), $._modifier_continues)),
       field('property', $._property_name),
       optional(choice('?', '!')),
       choice(
@@ -1527,7 +1537,7 @@ export default grammar(JavaScript, {
     _bare_field_definition: $ => seq(
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
-      optional(field('variance', $.variance)),
+      optional(seq(field('variance', $.variance), $._modifier_continues)),
       field('property', $._property_name),
       optional(choice('?', '!')),
     ),
@@ -1536,8 +1546,9 @@ export default grammar(JavaScript, {
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
       'abstract',
-      optional('override'),
-      optional(field('variance', $.variance)),
+      $._modifier_continues,
+      optional(seq('override', $._modifier_continues)),
+      optional(seq(field('variance', $.variance), $._modifier_continues)),
       field('property', $._property_name),
       optional('?'),
       optional(field('type_annotation', $.type_annotation)),
@@ -1552,6 +1563,16 @@ export default grammar(JavaScript, {
       field('body', $.statement_block),
     )),
 
+    _class_method_definition: $ => prec.left(seq(
+      repeat(field('decorator', $.decorator)),
+      optional($._class_method_modifiers),
+      field('name', $._property_name),
+      optional('?'),
+      $._call_signature,
+      field('body', $.statement_block),
+    )),
+
+    // Modifiers of object and record methods, as in tree-sitter-javascript.
     _method_modifiers: $ => choice(
       seq(
         repeat1(choice(
@@ -1566,6 +1587,21 @@ export default grammar(JavaScript, {
       choice('get', 'set', '*'),
     ),
 
+    // Modifiers of class methods: see _class_member_modifiers.
+    _class_method_modifiers: $ => choice(
+      seq(
+        repeat1(choice(
+          seq(field('ts_accessibility', choice('private', 'protected', 'public')), $._modifier_continues),
+          seq('static', $._modifier_continues),
+          alias(token(seq('static', /\s+/, 'get', /\s*\n/)), 'static get'),
+          seq('override', $._modifier_continues),
+          seq('async', $._async_modifier_continues),
+        )),
+        optional(choice(seq(choice('get', 'set'), $._accessor_modifier_continues), '*')),
+      ),
+      choice(seq(choice('get', 'set'), $._accessor_modifier_continues), '*'),
+    ),
+
     // `export default function (): T;` without a body, in declaration files.
     _function_signature_expression: $ => seq(
       optional('async'),
@@ -1576,7 +1612,7 @@ export default grammar(JavaScript, {
     // A class method without a body: `method(x: number): void;`
     declare_method_definition: $ => seq(
       repeat(field('decorator', $.decorator)),
-      optional($._method_modifiers),
+      optional($._class_method_modifiers),
       field('name', $._property_name),
       optional('?'),
       $._call_signature,
@@ -1586,8 +1622,9 @@ export default grammar(JavaScript, {
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
       'abstract',
-      optional('override'),
-      optional(choice('get', 'set', '*')),
+      $._modifier_continues,
+      optional(seq('override', $._modifier_continues)),
+      optional(choice(seq(choice('get', 'set'), $._accessor_modifier_continues), '*')),
       field('name', $._property_name),
       optional('?'),
       $._call_signature,

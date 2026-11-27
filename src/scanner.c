@@ -92,6 +92,11 @@ enum TokenType {
     // as after a match statement's `}`: an automatic semicolon there comes
     // before a comment that follows, even where an expression could continue.
     STATEMENT_END,
+    // Flow: zero-width, after a class member modifier: the member goes on.
+    // See scan_modifier_continues.
+    MODIFIER_CONTINUES,
+    ASYNC_MODIFIER_CONTINUES,
+    ACCESSOR_MODIFIER_CONTINUES,
 };
 
 // Flow: see classify_angle.
@@ -341,7 +346,8 @@ static bool asi_after_line_terminator(TSLexer *lexer, bool after_type, bool fiel
 // `marked`: the end of a zero-width token was already marked before skipped
 // whitespace, so the token stays right after the previous token.
 static bool scan_automatic_semicolon(TSLexer *lexer, bool comment_condition, bool *scanned_comment, bool after_type,
-                                     bool field_name, bool after_arrow_block, bool marked, bool *crossed_line) {
+                                     bool field_name, bool after_arrow_block, bool signature_only, bool marked,
+                                     bool *crossed_line) {
     lexer->result_symbol = AUTOMATIC_SEMICOLON;
     *crossed_line = false;
     if (!marked) {
@@ -359,12 +365,21 @@ static bool scan_automatic_semicolon(TSLexer *lexer, bool comment_condition, boo
                 return false;
             }
 
-            // Flow: a comment that spans a line terminator acts like a newline, so the
-            // next token still decides, as in `| A // comment` followed by `| B`.
+            // Flow: after a type, a comment that spans a line terminator acts like a
+            // newline, so the next token still decides, as in `| A // comment`
+            // followed by `| B`.
             if (result == ACCEPT && comment_condition) {
                 *crossed_line = true;
                 if (scan_whitespace_and_comments(lexer, scanned_comment, true) == REJECT) {
                     return false;
+                }
+                // As in tree-sitter-javascript, where no expression can go on,
+                // the semicolon goes before the comment unless a `,` or `=`
+                // follows: in `let a // c` then `;`, the `;` is an empty
+                // statement. Unlike there, the next token decides also after a
+                // block comment followed by spaces: `let a /* c\n */ = 1`.
+                if (!after_type && !field_name && !signature_only) {
+                    return lexer->lookahead != ',' && lexer->lookahead != '=';
                 }
                 return asi_after_line_terminator(lexer, after_type, field_name, after_arrow_block);
             }
@@ -374,12 +389,18 @@ static bool scan_automatic_semicolon(TSLexer *lexer, bool comment_condition, boo
             // spaces are skipped here: a line break that follows is handled
             // below, as in tree-sitter-javascript.
             if (result == ACCEPT) {
+                bool skipped = false;
                 while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
                     skip(lexer);
+                    skipped = true;
                 }
                 if (lexer->lookahead == '!') {
                     skip(lexer);
                     return lexer->lookahead != '=';
+                }
+                // Another comment may follow: `} /* a\n */ /* b\n */`.
+                if (skipped) {
+                    continue;
                 }
             }
         }
@@ -1687,8 +1708,254 @@ static bool scan_jsx_string_fragment(TSLexer *lexer, int32_t quote) {
     }
 }
 
+// Flow: whether a class member with a Flow type starts here: a key, then
+// `:` (after `?` or `!`), `<`, or a parameter list and `:`. Consumes it.
+static bool typed_member_follows(TSLexer *lexer, bool *in_word) {
+    *in_word = false;
+    int32_t c = lexer->lookahead;
+    if (c == '#') {
+        advance(lexer);
+        c = lexer->lookahead;
+    }
+    if (iswalpha(c) || c == '_' || c == '$' || c > 127) {
+        char word[16];
+        unsigned n = 0;
+        while (is_word_char(lexer->lookahead) || lexer->lookahead > 127) {
+            if (n < sizeof(word) - 1) {
+                word[n] = (char)lexer->lookahead;
+            }
+            n++;
+            advance(lexer);
+        }
+        word[n < sizeof(word) ? n : sizeof(word) - 1] = 0;
+        *in_word = strcmp(word, "in") == 0 || strcmp(word, "instanceof") == 0;
+    } else if (c == '[') {
+        advance(lexer);
+        if (!skip_balanced(lexer, ']')) {
+            return false;
+        }
+    } else if (c == '"' || c == '\'') {
+        if (!skip_quoted(lexer, c)) {
+            return false;
+        }
+    } else if (iswdigit(c)) {
+        while (is_word_char(lexer->lookahead) || lexer->lookahead == '.') {
+            advance(lexer);
+        }
+    } else {
+        return false;
+    }
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+        advance(lexer);
+    }
+    if (lexer->lookahead == '?' || lexer->lookahead == '!') {
+        advance(lexer);
+        while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+            advance(lexer);
+        }
+    }
+    if (lexer->lookahead == ':' || lexer->lookahead == '<') {
+        return true;
+    }
+    if (lexer->lookahead != '(') {
+        return false;
+    }
+    // A parameter with a type, `(c: T)` or `(c?: T)`, or a return type.
+    advance(lexer);
+    unsigned depth = 0;
+    unsigned conditionals = 0;
+    for (unsigned steps = 0; steps < 100000; steps++) {
+        int32_t d = lexer->lookahead;
+        if (d == 0) {
+            return false;
+        }
+        if (d == '"' || d == '\'') {
+            if (!skip_quoted(lexer, d)) {
+                return false;
+            }
+            continue;
+        }
+        if (d == '`') {
+            if (!skip_template(lexer)) {
+                return false;
+            }
+            continue;
+        }
+        advance(lexer);
+        if (d == '(' || d == '[' || d == '{') {
+            depth++;
+        } else if (d == ')' || d == ']' || d == '}') {
+            if (depth == 0) {
+                break;
+            }
+            depth--;
+        } else if (depth == 0 && d == '?') {
+            if (lexer->lookahead == ':') {
+                return true;
+            }
+            if (lexer->lookahead != '.') {
+                conditionals++;
+            }
+        } else if (depth == 0 && d == ':') {
+            if (conditionals == 0) {
+                return true;
+            }
+            conditionals--;
+        }
+    }
+    if (!skip_trivia(lexer)) {
+        return false;
+    }
+    return lexer->lookahead == ':';
+}
+
+// Flow: after a class member modifier, whether the member goes on, which
+// MODIFIER_CONTINUES (ASYNC_MODIFIER_CONTINUES after `async`) says. On the same
+// line it does before a key or `*`. After a line break it does, as in
+// tree-sitter-javascript, where no automatic semicolon is inserted: before
+// `[`, before `*` after `async`, and before `in`. It also does before a member
+// with a Flow type, as in Flow's parser: `declare` then `b: T`. Otherwise the
+// modifier is a field of its own and, where one is valid, an automatic
+// semicolon follows it.
+static bool scan_modifier_continues(TSLexer *lexer, const bool *valid_symbols) {
+    bool after_async = valid_symbols[ASYNC_MODIFIER_CONTINUES];
+    bool after_accessor = valid_symbols[ACCESSOR_MODIFIER_CONTINUES];
+    lexer->mark_end(lexer);
+    bool newline = false;
+    for (;;) {
+        int32_t c = lexer->lookahead;
+        if (c == '\n' || c == '\r' || c == 0x2028 || c == 0x2029) {
+            newline = true;
+            skip(lexer);
+        } else if (iswspace(c)) {
+            skip(lexer);
+        } else if (c == '/') {
+            skip(lexer);
+            if (lexer->lookahead == '/') {
+                while (lexer->lookahead != 0 && lexer->lookahead != '\n') {
+                    skip(lexer);
+                }
+            } else if (lexer->lookahead == '*') {
+                skip(lexer);
+                for (;;) {
+                    if (lexer->lookahead == 0) {
+                        return false;
+                    }
+                    if (lexer->lookahead == '\n') {
+                        newline = true;
+                    }
+                    int32_t d = lexer->lookahead;
+                    skip(lexer);
+                    if (d == '*' && lexer->lookahead == '/') {
+                        skip(lexer);
+                        break;
+                    }
+                }
+            } else {
+                return false;
+            }
+        } else {
+            break;
+        }
+    }
+    int32_t c = lexer->lookahead;
+    bool key = iswalpha(c) || c == '_' || c == '$' || c > 127 || c == '#' || c == '[' || c == '"' || c == '\'' ||
+               iswdigit(c);
+    lexer->result_symbol = after_async      ? ASYNC_MODIFIER_CONTINUES
+                           : after_accessor ? ACCESSOR_MODIFIER_CONTINUES
+                                            : MODIFIER_CONTINUES;
+    // A variance sigil, `static +b: T`.
+    if ((c == '+' || c == '-') && !after_async && !after_accessor) {
+        if (!newline) {
+            return true;
+        }
+        advance(lexer);
+        while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+            advance(lexer);
+        }
+        bool in_word = false;
+        return typed_member_follows(lexer, &in_word);
+    }
+    if (!newline) {
+        if (key || c == '*') {
+            return true;
+        }
+        // The modifier is a field that ends here: `class A { get }`.
+        if (valid_symbols[AUTOMATIC_SEMICOLON] && (c == '}' || c == 0)) {
+            lexer->result_symbol = AUTOMATIC_SEMICOLON;
+            return true;
+        }
+        return false;
+    }
+    if (after_async) {
+        // As in tree-sitter-javascript, `async` goes on after a line break only
+        // where no automatic semicolon is inserted: before `*`, a computed
+        // method key, or `in`. In Flow's parser, never.
+        if (c == '*') {
+            return true;
+        }
+        if (c == '[') {
+            advance(lexer);
+            return skip_balanced(lexer, ']') && skip_trivia(lexer) &&
+                   (lexer->lookahead == '(' || lexer->lookahead == '<');
+        }
+        if (c == 'i') {
+            bool in_word = false;
+            typed_member_follows(lexer, &in_word);
+            if (in_word) {
+                return true;
+            }
+            if (valid_symbols[AUTOMATIC_SEMICOLON]) {
+                lexer->result_symbol = AUTOMATIC_SEMICOLON;
+                return true;
+            }
+            return false;
+        }
+        if (valid_symbols[AUTOMATIC_SEMICOLON] || valid_symbols[FIELD_NAME_SEPARATOR]) {
+            lexer->result_symbol = AUTOMATIC_SEMICOLON;
+            return asi_after_line_terminator(lexer, valid_symbols[TYPE_LBRACKET], valid_symbols[FIELD_NAME_SEPARATOR],
+                                             false) &&
+                   (lexer->result_symbol == FIELD_NAME_SEPARATOR || valid_symbols[AUTOMATIC_SEMICOLON]);
+        }
+        return false;
+    }
+    // After a line break, `*` goes on, as in tree-sitter-javascript, except
+    // after `get` and `set`: `get` then `*a() {}` is a field and a method.
+    if (c == '[' || (c == '*' && !after_accessor)) {
+        return true;
+    }
+    if (!key) {
+        // The modifier is a field that ends at the line break, as in
+        // `get` then `*a() {}`, or `set` then `}`.
+        if (valid_symbols[AUTOMATIC_SEMICOLON] || valid_symbols[FIELD_NAME_SEPARATOR]) {
+            lexer->result_symbol = AUTOMATIC_SEMICOLON;
+            return asi_after_line_terminator(lexer, valid_symbols[TYPE_LBRACKET], valid_symbols[FIELD_NAME_SEPARATOR],
+                                             false) &&
+                   (lexer->result_symbol == FIELD_NAME_SEPARATOR || valid_symbols[AUTOMATIC_SEMICOLON]);
+        }
+        return false;
+    }
+    bool in_word = false;
+    if (typed_member_follows(lexer, &in_word) || in_word) {
+        return true;
+    }
+    // The modifier is a field: insert its semicolon here when one is valid.
+    if (valid_symbols[AUTOMATIC_SEMICOLON]) {
+        lexer->result_symbol = AUTOMATIC_SEMICOLON;
+        return true;
+    }
+    return false;
+}
+
 bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     (void)payload;
+    // During error recovery every symbol is valid; the member scan stays out.
+    bool recovering = valid_symbols[TEMPLATE_CHARS] && valid_symbols[JSX_TEXT];
+    if ((valid_symbols[MODIFIER_CONTINUES] || valid_symbols[ASYNC_MODIFIER_CONTINUES] ||
+         valid_symbols[ACCESSOR_MODIFIER_CONTINUES]) &&
+        !recovering) {
+        return scan_modifier_continues(lexer, valid_symbols);
+    }
     // Inside a JSX string no automatic semicolon is valid; during error
     // recovery every symbol is, and the string scan must not run there.
     if ((valid_symbols[JSX_STRING_FRAGMENT_DOUBLE] || valid_symbols[JSX_STRING_FRAGMENT_SINGLE]) &&
@@ -1776,6 +2043,8 @@ bool tree_sitter_flow_external_scanner_scan(void *payload, TSLexer *lexer, const
                                             valid_symbols[ARROW_BLOCK_END] ||
                                                 (valid_symbols[FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON] &&
                                                  !valid_symbols[AUTOMATIC_SEMICOLON]),
+                                            valid_symbols[FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON] &&
+                                                !valid_symbols[AUTOMATIC_SEMICOLON],
                                             marked, &crossed_line);
         // Flow: a body-less signature ends at the end of the file, also after
         // a comment. tree-sitter-javascript's automatic semicolon does not,
