@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 project(tree-sitter-flow
-        VERSION "0.1.0"
+        VERSION "0.2.0"
         DESCRIPTION "Flow grammar for tree-sitter"
         HOMEPAGE_URL "https://github.com/VladimirMakaev/tree-sitter-flow"
         LANGUAGES C)
