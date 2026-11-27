@@ -7681,21 +7681,8 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "FIELD",
-                  "name": "variance",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "variance"
-                  }
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_modifier_continues"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_class_variance"
             },
             {
               "type": "BLANK"
@@ -14421,6 +14408,72 @@
         }
       ]
     },
+    "_class_variance": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "variance",
+          "content": {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_variance_sigil"
+            },
+            "named": true,
+            "value": "variance"
+          }
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "variance",
+              "content": {
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_variance_word"
+                },
+                "named": true,
+                "value": "variance"
+              }
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_modifier_continues"
+            }
+          ]
+        }
+      ]
+    },
+    "_variance_sigil": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "+"
+        },
+        {
+          "type": "STRING",
+          "value": "-"
+        }
+      ]
+    },
+    "_variance_word": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "readonly"
+        },
+        {
+          "type": "STRING",
+          "value": "writeonly"
+        }
+      ]
+    },
     "_class_member_modifiers": {
       "type": "REPEAT1",
       "content": {
@@ -14532,21 +14585,8 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "FIELD",
-                  "name": "variance",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "variance"
-                  }
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_modifier_continues"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_class_variance"
             },
             {
               "type": "BLANK"
@@ -14648,21 +14688,8 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "FIELD",
-                  "name": "variance",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "variance"
-                  }
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_modifier_continues"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_class_variance"
             },
             {
               "type": "BLANK"
@@ -14759,21 +14786,8 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "FIELD",
-                  "name": "variance",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "variance"
-                  }
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_modifier_continues"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_class_variance"
             },
             {
               "type": "BLANK"

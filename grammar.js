@@ -1504,6 +1504,16 @@ export default grammar(JavaScript, {
     // the member has a Flow type, as in `declare` then `b: T`. Otherwise, as
     // in tree-sitter-javascript, the word is a field of its own: `static
     // async` then `b() {}` is a field `async` and a method `b`.
+    // A variance sigil always goes on to the member, also on the next line;
+    // `readonly` and `writeonly` alone on their line are fields, as in
+    // tree-sitter-javascript, unless a member with a Flow type follows.
+    _class_variance: $ => choice(
+      field('variance', alias($._variance_sigil, $.variance)),
+      seq(field('variance', alias($._variance_word, $.variance)), $._modifier_continues),
+    ),
+    _variance_sigil: _ => choice('+', '-'),
+    _variance_word: _ => choice('readonly', 'writeonly'),
+
     _class_member_modifiers: $ => repeat1(choice(
       seq(field('ts_accessibility', choice('private', 'protected', 'public')), $._modifier_continues),
       seq('static', $._modifier_continues),
@@ -1515,7 +1525,7 @@ export default grammar(JavaScript, {
     field_definition: $ => seq(
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
-      optional(seq(field('variance', $.variance), $._modifier_continues)),
+      optional($._class_variance),
       field('property', $._property_name),
       optional(choice('?', '!')),
       optional(field('type_annotation', $.type_annotation)),
@@ -1525,7 +1535,7 @@ export default grammar(JavaScript, {
     _separated_field_definition: $ => seq(
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
-      optional(seq(field('variance', $.variance), $._modifier_continues)),
+      optional($._class_variance),
       field('property', $._property_name),
       optional(choice('?', '!')),
       choice(
@@ -1537,7 +1547,7 @@ export default grammar(JavaScript, {
     _bare_field_definition: $ => seq(
       repeat(field('decorator', $.decorator)),
       optional($._class_member_modifiers),
-      optional(seq(field('variance', $.variance), $._modifier_continues)),
+      optional($._class_variance),
       field('property', $._property_name),
       optional(choice('?', '!')),
     ),
@@ -1548,7 +1558,7 @@ export default grammar(JavaScript, {
       'abstract',
       $._modifier_continues,
       optional(seq('override', $._modifier_continues)),
-      optional(seq(field('variance', $.variance), $._modifier_continues)),
+      optional($._class_variance),
       field('property', $._property_name),
       optional('?'),
       optional(field('type_annotation', $.type_annotation)),

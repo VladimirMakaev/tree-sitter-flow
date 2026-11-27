@@ -178,6 +178,13 @@ for (;;) {
 }
 class A { static async
   b() {} }
+class C { static \u2118() {} }
+class C { static \u{6F}() {} }
+class C { get \u2118() {} }
+class C { async \u2118() {} }
+class C { static \u0275fac = 1; }
+class C { get .1() {} }
+class C { static get .1() {} }
 
 ---
 
@@ -1510,5 +1517,53 @@ class A { static async
         property: (property_identifier))
       member: (method_definition
         name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (number))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (number)
+        parameters: (formal_parameters)
+        body: (statement_block))))
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (method_definition
+        name: (number)
         parameters: (formal_parameters)
         body: (statement_block)))))

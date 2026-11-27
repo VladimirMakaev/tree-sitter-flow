@@ -426,3 +426,98 @@ class A{a=async(e)=>await b(e,c);static async*d(){}}
         name: (property_identifier)
         parameters: (formal_parameters)
         body: (statement_block)))))
+
+================================================================================
+Members with escaped, non-ASCII, string and number names after a field without a semicolon
+================================================================================
+
+class C { a = 1 \u2118() {} b: T ℘: T c: T 1: T d = 2 "e"() {} f: T +g: T }
+
+--------------------------------------------------------------------------------
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier)
+        value: (number))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        body: (statement_block))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      member: (field_definition
+        property: (number)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      member: (field_definition
+        property: (property_identifier)
+        value: (number))
+      member: (method_definition
+        name: (string
+          (string_fragment))
+        parameters: (formal_parameters)
+        body: (statement_block))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      member: (field_definition
+        variance: (variance)
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))))))
+
+================================================================================
+Typed member named in after a modifier on the line before
+================================================================================
+
+class C {
+  static async
+  in: T
+  h: T in(): U {}
+}
+
+--------------------------------------------------------------------------------
+
+(program
+  (class_declaration
+    name: (identifier)
+    body: (class_body
+      member: (field_definition
+        property: (property_identifier))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      member: (field_definition
+        property: (property_identifier)
+        type_annotation: (type_annotation
+          (generic_type_annotation
+            id: (identifier))))
+      member: (method_definition
+        name: (property_identifier)
+        parameters: (formal_parameters)
+        return_type: (type_annotation
+          (generic_type_annotation
+            id: (identifier)))
+        body: (statement_block)))))

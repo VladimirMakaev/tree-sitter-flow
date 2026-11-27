@@ -118,6 +118,9 @@ static bool classify_angle_impl(TSLexer *lexer, bool after_new, bool arrow_conte
 static bool classify_angle(TSLexer *lexer, bool after_new, bool arrow_context, AngleKind *kind);
 static bool closing_tag_follows(TSLexer *lexer, const char *name);
 static bool is_word_char(int32_t c);
+static bool skip_balanced(TSLexer *lexer, int32_t close);
+static bool skip_unicode_escape(TSLexer *lexer);
+static bool skip_quoted(TSLexer *lexer, int32_t quote);
 
 void *tree_sitter_flow_external_scanner_create(void) { return NULL; }
 
@@ -222,6 +225,45 @@ static WhitespaceResult scan_whitespace_and_comments(TSLexer *lexer, bool *scann
 
 // Decides whether a semicolon is inserted before the token at the lookahead,
 // once a line terminator has been seen.
+// Flow: after `in` at the start of a line, whether it names a new class member
+// rather than being the `in` operator: `in: T`, `in?: T`, `in = 1` and, after
+// a class field name, a method with a Flow type, `in(): T {}`. Neither the
+// operator nor its right operand can start with `:` or `=`.
+static bool in_starts_member(TSLexer *lexer, bool field_name) {
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+        skip(lexer);
+    }
+    int32_t c = lexer->lookahead;
+    if (c == ':') {
+        return true;
+    }
+    if (c == '?') {
+        skip(lexer);
+        return lexer->lookahead == ':';
+    }
+    if (c == '=') {
+        skip(lexer);
+        return lexer->lookahead != '=' && lexer->lookahead != '>';
+    }
+    if (!field_name) {
+        return false;
+    }
+    if (c == '<') {
+        return true;
+    }
+    if (c != '(') {
+        return false;
+    }
+    skip(lexer);
+    if (!skip_balanced(lexer, ')')) {
+        return false;
+    }
+    while (iswspace(lexer->lookahead)) {
+        skip(lexer);
+    }
+    return lexer->lookahead == ':';
+}
+
 static bool asi_after_line_terminator(TSLexer *lexer, bool after_type, bool field_name, bool after_arrow_block) {
     // Flow: an arrow function cannot be called or indexed directly, so after
     // its block body `(`, `[` and a template on the next line start a new
@@ -321,7 +363,9 @@ static bool asi_after_line_terminator(TSLexer *lexer, bool after_type, bool fiel
             skip(lexer);
 
             if (!iswalpha(lexer->lookahead)) {
-                return false;
+                // Flow: a class member named `in` with a Flow type starts a new
+                // member, as in Flow's parser: `static async` then `in: T`.
+                return in_starts_member(lexer, field_name);
             }
 
             for (unsigned i = 0; i < 8; i++) {
@@ -1395,58 +1439,156 @@ after_close:
 // Flow: the end of a class field before another member on the same line,
 // `class A { x: T y() {} }` or `class A { a = 1 b() {} }`, as in Flow's parser.
 // The lookahead is the first character after the field.
+// Flow: consumes a number key, `1`, `.1`, `1.`, `1e-3`, `0x1`, `1n`, `1_000`.
+static void skip_number(TSLexer *lexer) {
+    if (lexer->lookahead == '.') {
+        advance(lexer);
+    }
+    for (;;) {
+        int32_t d = lexer->lookahead;
+        if (d == 'e' || d == 'E') {
+            advance(lexer);
+            if (lexer->lookahead == '+' || lexer->lookahead == '-') {
+                advance(lexer);
+            }
+            continue;
+        }
+        if (!(is_word_char(d) || d == '.')) {
+            return;
+        }
+        advance(lexer);
+    }
+}
+
+// Flow: whether what follows a class member key starts the rest of a member:
+// `(`, `:`, `<`, `?`, `!`, or `=` that is not `=>` or `==`.
+static bool member_rest_follows(TSLexer *lexer) {
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+        advance(lexer);
+    }
+    int32_t c = lexer->lookahead;
+    if (c == '=') {
+        // `c => d` is an arrow function, `a = async c => c`.
+        advance(lexer);
+        return lexer->lookahead != '>' && lexer->lookahead != '=';
+    }
+    return c == '(' || c == ':' || c == '<' || c == '?' || c == '!';
+}
+
+// Flow: whether a word continues an expression or a type rather than naming a
+// member. `function` continues `async`: `a = async function* () {}`.
+static bool is_continuation_word(const char *word) {
+    static const char *const continuations[] = {"in", "instanceof", "as", "satisfies", "extends", "is", "function"};
+    for (unsigned i = 0; i < sizeof(continuations) / sizeof(continuations[0]); i++) {
+        if (strcmp(word, continuations[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Flow: consumes a name, with `\u` escapes and non-ASCII characters, into
+// `word` (empty when escaped or too long). Returns false on a bad escape.
+static bool scan_member_name(TSLexer *lexer, char *word, unsigned size) {
+    unsigned n = 0;
+    bool plain = true;
+    for (;;) {
+        int32_t d = lexer->lookahead;
+        if (d == '\\') {
+            advance(lexer);
+            if (!skip_unicode_escape(lexer)) {
+                return false;
+            }
+            plain = false;
+            continue;
+        }
+        if (!(is_word_char(d) || d > 127)) {
+            break;
+        }
+        if (n < size - 1) {
+            word[n] = (char)d;
+        }
+        n++;
+        advance(lexer);
+    }
+    if (!plain || n >= size) {
+        n = 0;
+    }
+    word[n] = 0;
+    return true;
+}
+
 static bool scan_class_field_separator(TSLexer *lexer, const bool *valid_symbols) {
     int32_t c = lexer->lookahead;
+    // After a type, nothing goes on with `+`, `-`, `in` or `instanceof`.
+    bool after_type = valid_symbols[TYPE_LBRACKET];
     lexer->result_symbol = CLASS_FIELD_SEPARATOR;
     if (c == '*') {
         // A generator method, unless an expression may continue: `a = b * c`.
         return !valid_symbols[LOGICAL_OR];
     }
-    if (!(iswalpha(c) || c == '_' || c == '$' || c == '#')) {
+    if ((c == '+' || c == '-') && after_type) {
+        // A variance sigil: `a: T +b: T`.
+        return true;
+    }
+    // A string or a number key, `'b'() {}` or `1: T`: neither an expression
+    // nor a type goes on with one.
+    if (c == '"' || c == '\'' || iswdigit(c) || c == '.') {
+        if (c == '.') {
+            advance(lexer);
+            if (!iswdigit(lexer->lookahead)) {
+                return false;
+            }
+            skip_number(lexer);
+        } else if (c == '"' || c == '\'') {
+            if (!skip_quoted(lexer, c)) {
+                return false;
+            }
+        } else {
+            skip_number(lexer);
+        }
+        return member_rest_follows(lexer);
+    }
+    // A name, with `\u` escapes and non-ASCII characters too.
+    if (!(iswalpha(c) || c == '_' || c == '$' || c == '#' || c == '\\' || c > 127)) {
         return false;
     }
-    // Words that continue an expression or a type.
-    // `function` continues `async`: `a = async function* () {}`.
-    static const char *const continuations[] = {"in", "instanceof", "as", "satisfies", "extends", "is", "function"};
     char word[16];
-    unsigned n = 0;
     if (c == '#') {
         advance(lexer);
     }
-    while (is_word_char(lexer->lookahead)) {
-        if (n < sizeof(word) - 1) {
-            word[n] = (char)lexer->lookahead;
-        }
-        n++;
-        advance(lexer);
+    if (!scan_member_name(lexer, word, sizeof(word))) {
+        return false;
     }
-    word[n < sizeof(word) ? n : sizeof(word) - 1] = 0;
-    for (unsigned i = 0; i < sizeof(continuations) / sizeof(continuations[0]); i++) {
-        if (strcmp(word, continuations[i]) == 0) {
+    if (is_continuation_word(word)) {
+        // After a type, `in` and `instanceof` name a member: `a: T in: U`.
+        bool named = after_type && (strcmp(word, "in") == 0 || strcmp(word, "instanceof") == 0);
+        if (!named || !member_rest_follows(lexer)) {
             return false;
         }
+        return true;
     }
     // The word must start a member: a name followed by `(`, `:`, `=`, `<`,
-    // `?`, `!` or another word. Otherwise it may belong to the type, as in
+    // `?`, `!` or another key. Otherwise it may belong to the type, as in
     // `(x) => implies x is T` or `(x) => asserts x;`.
     while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
         advance(lexer);
     }
     c = lexer->lookahead;
+    if (c == '\\' || c > 127 || c == '"' || c == '\'' || c == '#' || c == '*' || c == '[' || c == '+' || c == '-') {
+        return true;
+    }
+    if (c == '.') {
+        advance(lexer);
+        return iswdigit(lexer->lookahead);
+    }
     if (is_word_char(c)) {
-        n = 0;
-        while (is_word_char(lexer->lookahead)) {
-            if (n < sizeof(word) - 1) {
-                word[n] = (char)lexer->lookahead;
-            }
-            n++;
-            advance(lexer);
+        if (!scan_member_name(lexer, word, sizeof(word))) {
+            return false;
         }
-        word[n < sizeof(word) ? n : sizeof(word) - 1] = 0;
-        for (unsigned i = 0; i < sizeof(continuations) / sizeof(continuations[0]); i++) {
-            if (strcmp(word, continuations[i]) == 0) {
-                return false;
-            }
+        if (is_continuation_word(word)) {
+            // `static in: T` names a member `in`.
+            return (strcmp(word, "in") == 0 || strcmp(word, "instanceof") == 0) && member_rest_follows(lexer);
         }
         return true;
     }
@@ -1455,7 +1597,7 @@ static bool scan_class_field_separator(TSLexer *lexer, const bool *valid_symbols
         advance(lexer);
         return lexer->lookahead != '>' && lexer->lookahead != '=';
     }
-    return c == '(' || c == ':' || c == '<' || c == '?' || c == '!' || c == '#' || c == '*' || c == '[';
+    return c == '(' || c == ':' || c == '<' || c == '?' || c == '!';
 }
 
 
@@ -1710,25 +1852,77 @@ static bool scan_jsx_string_fragment(TSLexer *lexer, int32_t quote) {
 
 // Flow: whether a class member with a Flow type starts here: a key, then
 // `:` (after `?` or `!`), `<`, or a parameter list and `:`. Consumes it.
-static bool typed_member_follows(TSLexer *lexer, bool *in_word) {
+// Flow: consumes a `\u` escape in an identifier, `\u2118` or `\u{6F}`, after
+// its `\`. Returns false when it is not one.
+static bool skip_unicode_escape(TSLexer *lexer) {
+    if (lexer->lookahead != 'u') {
+        return false;
+    }
+    advance(lexer);
+    if (lexer->lookahead == '{') {
+        advance(lexer);
+        unsigned n = 0;
+        while (iswxdigit(lexer->lookahead) && n < 8) {
+            advance(lexer);
+            n++;
+        }
+        if (n == 0 || lexer->lookahead != '}') {
+            return false;
+        }
+        advance(lexer);
+        return true;
+    }
+    for (unsigned i = 0; i < 4; i++) {
+        if (!iswxdigit(lexer->lookahead)) {
+            return false;
+        }
+        advance(lexer);
+    }
+    return true;
+}
+
+// Flow: whether a class member key can start with this character: a name,
+// with a `\u` escape or non-ASCII characters too, a private name, a string, a
+// number (`.1` included) or a computed key. Like tree-sitter-javascript's
+// identifier token, any non-ASCII character counts.
+static bool is_member_key_start(int32_t c) {
+    return iswalpha(c) || c == '_' || c == '$' || c > 127 || c == '\\' || c == '#' || c == '[' || c == '"' ||
+           c == '\'' || iswdigit(c) || c == '.';
+}
+
+static bool typed_member_follows(TSLexer *lexer, bool *in_word, bool *method) {
     *in_word = false;
+    *method = false;
     int32_t c = lexer->lookahead;
     if (c == '#') {
         advance(lexer);
         c = lexer->lookahead;
     }
-    if (iswalpha(c) || c == '_' || c == '$' || c > 127) {
+    if (iswalpha(c) || c == '_' || c == '$' || c > 127 || c == '\\') {
         char word[16];
         unsigned n = 0;
-        while (is_word_char(lexer->lookahead) || lexer->lookahead > 127) {
+        for (;;) {
+            int32_t d = lexer->lookahead;
+            if (d == '\\') {
+                advance(lexer);
+                if (!skip_unicode_escape(lexer)) {
+                    return false;
+                }
+                // An escaped name is never the keyword `in`.
+                n = sizeof(word);
+                continue;
+            }
+            if (!(is_word_char(d) || d > 127)) {
+                break;
+            }
             if (n < sizeof(word) - 1) {
-                word[n] = (char)lexer->lookahead;
+                word[n] = (char)d;
             }
             n++;
             advance(lexer);
         }
         word[n < sizeof(word) ? n : sizeof(word) - 1] = 0;
-        *in_word = strcmp(word, "in") == 0 || strcmp(word, "instanceof") == 0;
+        *in_word = n < sizeof(word) && (strcmp(word, "in") == 0 || strcmp(word, "instanceof") == 0);
     } else if (c == '[') {
         advance(lexer);
         if (!skip_balanced(lexer, ']')) {
@@ -1738,8 +1932,26 @@ static bool typed_member_follows(TSLexer *lexer, bool *in_word) {
         if (!skip_quoted(lexer, c)) {
             return false;
         }
-    } else if (iswdigit(c)) {
-        while (is_word_char(lexer->lookahead) || lexer->lookahead == '.') {
+    } else if (iswdigit(c) || c == '.') {
+        // A number: `1`, `.1`, `1.`, `1e3`, `1e-3`, `0x1`, `1n`, `1_000`.
+        if (c == '.') {
+            advance(lexer);
+            if (!iswdigit(lexer->lookahead)) {
+                return false;
+            }
+        }
+        for (;;) {
+            int32_t d = lexer->lookahead;
+            if (d == 'e' || d == 'E') {
+                advance(lexer);
+                if (lexer->lookahead == '+' || lexer->lookahead == '-') {
+                    advance(lexer);
+                }
+                continue;
+            }
+            if (!(is_word_char(d) || d == '.')) {
+                break;
+            }
             advance(lexer);
         }
     } else {
@@ -1760,6 +1972,7 @@ static bool typed_member_follows(TSLexer *lexer, bool *in_word) {
     if (lexer->lookahead != '(') {
         return false;
     }
+    *method = true;
     // A parameter with a type, `(c: T)` or `(c?: T)`, or a return type.
     advance(lexer);
     unsigned depth = 0;
@@ -1859,22 +2072,14 @@ static bool scan_modifier_continues(TSLexer *lexer, const bool *valid_symbols) {
         }
     }
     int32_t c = lexer->lookahead;
-    bool key = iswalpha(c) || c == '_' || c == '$' || c > 127 || c == '#' || c == '[' || c == '"' || c == '\'' ||
-               iswdigit(c);
+    bool key = is_member_key_start(c);
     lexer->result_symbol = after_async      ? ASYNC_MODIFIER_CONTINUES
                            : after_accessor ? ACCESSOR_MODIFIER_CONTINUES
                                             : MODIFIER_CONTINUES;
-    // A variance sigil, `static +b: T`.
+    // A variance sigil, `static +b: T`, also on the next line: a field cannot
+    // start with `+`.
     if ((c == '+' || c == '-') && !after_async && !after_accessor) {
-        if (!newline) {
-            return true;
-        }
-        advance(lexer);
-        while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-            advance(lexer);
-        }
-        bool in_word = false;
-        return typed_member_follows(lexer, &in_word);
+        return true;
     }
     if (!newline) {
         if (key || c == '*') {
@@ -1900,9 +2105,14 @@ static bool scan_modifier_continues(TSLexer *lexer, const bool *valid_symbols) {
                    (lexer->lookahead == '(' || lexer->lookahead == '<');
         }
         if (c == 'i') {
+            // `async` then `in() {}` is an async method in
+            // tree-sitter-javascript; with a Flow type, `in(): T {}`, or as a
+            // field, `in = 1`, `async` is a field of its own, as in Flow's
+            // parser.
             bool in_word = false;
-            typed_member_follows(lexer, &in_word);
-            if (in_word) {
+            bool method = false;
+            bool typed = typed_member_follows(lexer, &in_word, &method);
+            if (in_word && method && !typed) {
                 return true;
             }
             if (valid_symbols[AUTOMATIC_SEMICOLON]) {
@@ -1936,7 +2146,8 @@ static bool scan_modifier_continues(TSLexer *lexer, const bool *valid_symbols) {
         return false;
     }
     bool in_word = false;
-    if (typed_member_follows(lexer, &in_word) || in_word) {
+    bool method = false;
+    if (typed_member_follows(lexer, &in_word, &method) || in_word) {
         return true;
     }
     // The modifier is a field: insert its semicolon here when one is valid.

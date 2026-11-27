@@ -1023,3 +1023,394 @@ x = { get
 2:7  - 2:8                "}"
 2:9  - 2:10           "}"
 2:10 - 2:11       ";"
+
+================================================================================
+Static method with an escaped name
+:cst
+================================================================================
+
+class C { static \u2118() {} }
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:30     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `C`
+1:8  - 1:30       body: class_body
+1:8  - 1:9          "{"
+1:10 - 1:28         member: method_definition
+1:10 - 1:16           "static"
+1:17 - 1:23           name: property_identifier `\\u2118`
+1:23 - 1:25           parameters: formal_parameters
+1:23 - 1:24             "("
+1:24 - 1:25             ")"
+1:26 - 1:28           body: statement_block
+1:26 - 1:27             "{"
+1:27 - 1:28             "}"
+1:29 - 1:30         "}"
+
+================================================================================
+Static method with a code point escape in its name
+:cst
+================================================================================
+
+class C { static \u{6F}() {} }
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:30     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `C`
+1:8  - 1:30       body: class_body
+1:8  - 1:9          "{"
+1:10 - 1:28         member: method_definition
+1:10 - 1:16           "static"
+1:17 - 1:23           name: property_identifier `\\u{6F}`
+1:23 - 1:25           parameters: formal_parameters
+1:23 - 1:24             "("
+1:24 - 1:25             ")"
+1:26 - 1:28           body: statement_block
+1:26 - 1:27             "{"
+1:27 - 1:28             "}"
+1:29 - 1:30         "}"
+
+================================================================================
+Getter with an escaped name
+:cst
+================================================================================
+
+class C { get \u2118() {} }
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:27     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `C`
+1:8  - 1:27       body: class_body
+1:8  - 1:9          "{"
+1:10 - 1:25         member: method_definition
+1:10 - 1:13           "get"
+1:14 - 1:20           name: property_identifier `\\u2118`
+1:20 - 1:22           parameters: formal_parameters
+1:20 - 1:21             "("
+1:21 - 1:22             ")"
+1:23 - 1:25           body: statement_block
+1:23 - 1:24             "{"
+1:24 - 1:25             "}"
+1:26 - 1:27         "}"
+
+================================================================================
+Async method with an escaped name
+:cst
+================================================================================
+
+class C { async \u2118() {} }
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:29     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `C`
+1:8  - 1:29       body: class_body
+1:8  - 1:9          "{"
+1:10 - 1:27         member: method_definition
+1:10 - 1:15           "async"
+1:16 - 1:22           name: property_identifier `\\u2118`
+1:22 - 1:24           parameters: formal_parameters
+1:22 - 1:23             "("
+1:23 - 1:24             ")"
+1:25 - 1:27           body: statement_block
+1:25 - 1:26             "{"
+1:26 - 1:27             "}"
+1:28 - 1:29         "}"
+
+================================================================================
+Static field with an escaped name
+:cst
+================================================================================
+
+class C { static \u0275fac = 1; }
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:33     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `C`
+1:8  - 1:33       body: class_body
+1:8  - 1:9          "{"
+1:10 - 1:30         member: field_definition
+1:10 - 1:16           "static"
+1:17 - 1:26           property: property_identifier `\\u0275fac`
+1:27 - 1:28           "="
+1:29 - 1:30           value: number `1`
+1:30 - 1:31         ";"
+1:32 - 1:33         "}"
+
+================================================================================
+Getter with a number key that starts with a dot
+:cst
+================================================================================
+
+class C { get .1() {} }
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:23     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `C`
+1:8  - 1:23       body: class_body
+1:8  - 1:9          "{"
+1:10 - 1:21         member: method_definition
+1:10 - 1:13           "get"
+1:14 - 1:16           name: number `.1`
+1:16 - 1:18           parameters: formal_parameters
+1:16 - 1:17             "("
+1:17 - 1:18             ")"
+1:19 - 1:21           body: statement_block
+1:19 - 1:20             "{"
+1:20 - 1:21             "}"
+1:22 - 1:23         "}"
+
+================================================================================
+Static getter with a number key that starts with a dot
+:cst
+================================================================================
+
+class C { static get .1() {} }
+
+--------------------------------------------------------------------------------
+
+1:0  - 2:0    program
+1:0  - 1:30     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `C`
+1:8  - 1:30       body: class_body
+1:8  - 1:9          "{"
+1:10 - 1:28         member: method_definition
+1:10 - 1:16           "static"
+1:17 - 1:20           "get"
+1:21 - 1:23           name: number `.1`
+1:23 - 1:25           parameters: formal_parameters
+1:23 - 1:24             "("
+1:24 - 1:25             ")"
+1:26 - 1:28           body: statement_block
+1:26 - 1:27             "{"
+1:27 - 1:28             "}"
+1:29 - 1:30         "}"
+
+================================================================================
+Accessors and modifiers with every number key form
+:cst
+================================================================================
+
+class C {
+  get 1.() {}
+  set 1e3(a) {}
+  static 0x1() {}
+  async 0b1() {}
+  static get 0o1() {}
+  get 1n() {}
+  static 1_000 = 1;
+  get .5e-3() {}
+}
+
+--------------------------------------------------------------------------------
+
+1:0  - 11:0   program
+1:0  - 10:1     class_declaration
+1:0  - 1:5        "class"
+1:6  - 1:7        name: identifier `C`
+1:8  - 10:1       body: class_body
+1:8  - 1:9          "{"
+2:2  - 2:13         member: method_definition
+2:2  - 2:5            "get"
+2:6  - 2:8            name: number `1.`
+2:8  - 2:10           parameters: formal_parameters
+2:8  - 2:9              "("
+2:9  - 2:10             ")"
+2:11 - 2:13           body: statement_block
+2:11 - 2:12             "{"
+2:12 - 2:13             "}"
+3:2  - 3:15         member: method_definition
+3:2  - 3:5            "set"
+3:6  - 3:9            name: number `1e3`
+3:9  - 3:12           parameters: formal_parameters
+3:9  - 3:10             "("
+3:10 - 3:11             identifier `a`
+3:11 - 3:12             ")"
+3:13 - 3:15           body: statement_block
+3:13 - 3:14             "{"
+3:14 - 3:15             "}"
+4:2  - 4:17         member: method_definition
+4:2  - 4:8            "static"
+4:9  - 4:12           name: number `0x1`
+4:12 - 4:14           parameters: formal_parameters
+4:12 - 4:13             "("
+4:13 - 4:14             ")"
+4:15 - 4:17           body: statement_block
+4:15 - 4:16             "{"
+4:16 - 4:17             "}"
+5:2  - 5:16         member: method_definition
+5:2  - 5:7            "async"
+5:8  - 5:11           name: number `0b1`
+5:11 - 5:13           parameters: formal_parameters
+5:11 - 5:12             "("
+5:12 - 5:13             ")"
+5:14 - 5:16           body: statement_block
+5:14 - 5:15             "{"
+5:15 - 5:16             "}"
+6:2  - 6:21         member: method_definition
+6:2  - 6:8            "static"
+6:9  - 6:12           "get"
+6:13 - 6:16           name: number `0o1`
+6:16 - 6:18           parameters: formal_parameters
+6:16 - 6:17             "("
+6:17 - 6:18             ")"
+6:19 - 6:21           body: statement_block
+6:19 - 6:20             "{"
+6:20 - 6:21             "}"
+7:2  - 7:13         member: method_definition
+7:2  - 7:5            "get"
+7:6  - 7:8            name: number `1n`
+7:8  - 7:10           parameters: formal_parameters
+7:8  - 7:9              "("
+7:9  - 7:10             ")"
+7:11 - 7:13           body: statement_block
+7:11 - 7:12             "{"
+7:12 - 7:13             "}"
+8:2  - 8:18         member: field_definition
+8:2  - 8:8            "static"
+8:9  - 8:14           property: number `1_000`
+8:15 - 8:16           "="
+8:17 - 8:18           value: number `1`
+8:18 - 8:19         ";"
+9:2  - 9:16         member: method_definition
+9:2  - 9:5            "get"
+9:6  - 9:11           name: number `.5e-3`
+9:11 - 9:13           parameters: formal_parameters
+9:11 - 9:12             "("
+9:12 - 9:13             ")"
+9:14 - 9:16           body: statement_block
+9:14 - 9:15             "{"
+9:15 - 9:16             "}"
+10:0 - 10:1         "}"
+
+================================================================================
+Modifiers before keyword, string, private and computed names
+:cst
+================================================================================
+
+class C {
+  static static() {}
+  get get() {}
+  async async() {}
+  get static() {}
+  static 'a'() {}
+  get "b"() {}
+  static #c() {}
+  async [d]() {}
+  static ℘ = 1;
+}
+
+--------------------------------------------------------------------------------
+
+1:0   - 12:0    program
+1:0   - 11:1      class_declaration
+1:0   - 1:5         "class"
+1:6   - 1:7         name: identifier `C`
+1:8   - 11:1        body: class_body
+1:8   - 1:9           "{"
+2:2   - 2:20          member: method_definition
+2:2   - 2:8             "static"
+2:9   - 2:15            name: property_identifier `static`
+2:15  - 2:17            parameters: formal_parameters
+2:15  - 2:16              "("
+2:16  - 2:17              ")"
+2:18  - 2:20            body: statement_block
+2:18  - 2:19              "{"
+2:19  - 2:20              "}"
+3:2   - 3:14          member: method_definition
+3:2   - 3:5             "get"
+3:6   - 3:9             name: property_identifier `get`
+3:9   - 3:11            parameters: formal_parameters
+3:9   - 3:10              "("
+3:10  - 3:11              ")"
+3:12  - 3:14            body: statement_block
+3:12  - 3:13              "{"
+3:13  - 3:14              "}"
+4:2   - 4:18          member: method_definition
+4:2   - 4:7             "async"
+4:8   - 4:13            name: property_identifier `async`
+4:13  - 4:15            parameters: formal_parameters
+4:13  - 4:14              "("
+4:14  - 4:15              ")"
+4:16  - 4:18            body: statement_block
+4:16  - 4:17              "{"
+4:17  - 4:18              "}"
+5:2   - 5:17          member: method_definition
+5:2   - 5:5             "get"
+5:6   - 5:12            name: property_identifier `static`
+5:12  - 5:14            parameters: formal_parameters
+5:12  - 5:13              "("
+5:13  - 5:14              ")"
+5:15  - 5:17            body: statement_block
+5:15  - 5:16              "{"
+5:16  - 5:17              "}"
+6:2   - 6:17          member: method_definition
+6:2   - 6:8             "static"
+6:9   - 6:12            name: string
+6:9   - 6:10              "'"
+6:10  - 6:11              string_fragment `a`
+6:11  - 6:12              "'"
+6:12  - 6:14            parameters: formal_parameters
+6:12  - 6:13              "("
+6:13  - 6:14              ")"
+6:15  - 6:17            body: statement_block
+6:15  - 6:16              "{"
+6:16  - 6:17              "}"
+7:2   - 7:14          member: method_definition
+7:2   - 7:5             "get"
+7:6   - 7:9             name: string
+7:6   - 7:7               "\""
+7:7   - 7:8               string_fragment `b`
+7:8   - 7:9               "\""
+7:9   - 7:11            parameters: formal_parameters
+7:9   - 7:10              "("
+7:10  - 7:11              ")"
+7:12  - 7:14            body: statement_block
+7:12  - 7:13              "{"
+7:13  - 7:14              "}"
+8:2   - 8:16          member: method_definition
+8:2   - 8:8             "static"
+8:9   - 8:11            name: private_property_identifier `#c`
+8:11  - 8:13            parameters: formal_parameters
+8:11  - 8:12              "("
+8:12  - 8:13              ")"
+8:14  - 8:16            body: statement_block
+8:14  - 8:15              "{"
+8:15  - 8:16              "}"
+9:2   - 9:16          member: method_definition
+9:2   - 9:7             "async"
+9:8   - 9:11            name: computed_property_name
+9:8   - 9:9               "["
+9:9   - 9:10              identifier `d`
+9:10  - 9:11              "]"
+9:11  - 9:13            parameters: formal_parameters
+9:11  - 9:12              "("
+9:12  - 9:13              ")"
+9:14  - 9:16            body: statement_block
+9:14  - 9:15              "{"
+9:15  - 9:16              "}"
+10:2  - 10:16         member: field_definition
+10:2  - 10:8            "static"
+10:9  - 10:12           property: property_identifier `℘`
+10:13 - 10:14           "="
+10:15 - 10:16           value: number `1`
+10:16 - 10:17         ";"
+11:0  - 11:1          "}"
