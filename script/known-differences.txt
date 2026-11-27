@@ -83,3 +83,31 @@ flow-typed/definitions/npm/koa-bunyan-logger_v2.x.x/test_koa_bunyan_logger_v2.x.
 #     reference implementation, which also reads `f<typeof import('a')>()`
 #     this way and which hermes-parser rejects.
 test/corpus/annotations.txt: Typeof import type as a member call type argument # Hermes and Babel compare around a dynamic import
+
+# A `;` after a comment and a line break, where no expression can go on:
+# `let a // c` then `;`, `break /* c\n d */;`.
+#   flow-parser, @babel/parser and hermes-parser: the statement ends at the `;`.
+#   tree-sitter-flow: the statement ends before the comment and the `;` is an
+#     empty statement, as in tree-sitter-javascript, so that plain JavaScript
+#     keeps tree-sitter-javascript's tree exactly.
+test/corpus/ranges.txt: Semicolon after a line comment and a line break # the `;` is an empty statement, as in tree-sitter-javascript
+test/corpus/ranges.txt: Comma-first declaration with a semicolon after a comment # the `;` is an empty statement, as in tree-sitter-javascript
+test/corpus/ranges.txt: Break with a semicolon after a block comment that spans lines # the `;` is an empty statement, as in tree-sitter-javascript
+
+# A class member modifier alone on its line before a member without a Flow
+# type: `static` then `b() {}`, `get` then `c() {}`, `set` then `d(e) {}`,
+# `async` then `*f() {}`.
+#   flow-parser, @babel/parser and hermes-parser: a static method `b`, a getter
+#     `c`, a setter `d`, a field `async` and a generator method `f`.
+#   tree-sitter-flow: fields `static`, `get` and `set` and methods `b`, `c` and
+#     `d`, and an async generator method `f`, as in tree-sitter-javascript, so
+#     that plain JavaScript keeps tree-sitter-javascript's tree exactly.
+test/corpus/ranges.txt: Modifiers alone on their line before members # modifiers alone on their line read as in tree-sitter-javascript
+
+# A Flow modifier alone on its line before a member with a type: `declare`
+# then `b: T`.
+#   flow-parser and @babel/parser: a declared field `b`.
+#   hermes-parser: a field `declare` and a field `b`.
+#   tree-sitter-flow: a declared field `b`, as flow-parser.
+test/corpus/ranges.txt: Modifiers alone on their line before typed members # Hermes reads `declare` alone on its line as a field
+

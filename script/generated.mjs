@@ -10,7 +10,8 @@
 // triples. Only snippets that flow-parser accepts (with `@flow`) are kept.
 // Each must parse with no ERROR or MISSING node, and with the same reading of
 // every `<` as flow-parser: the same number of calls with type arguments,
-// comparisons, arrow functions, JSX elements and type casts. Every node must
+// comparisons, arrow functions, JSX elements, type casts, class fields and
+// class methods. Every node must
 // also end at its last token (script/ranges.mjs); Flow declarations and
 // statements followed by comments in many placements check that. The exit
 // code is non-zero on any failure.
@@ -166,9 +167,31 @@ const DECLARATIONS = [
   'declare export default T', "declare module.exports: T", 'export default class {}', 'record R {}',
 ];
 const COMMENTS = [' // c', '  // c', ' /* c */', '/* c */', ' /**\n * c\n */', ' /* c */ /* d */', '\n// c',
-  '\n/**\n * c\n */', ''];
-const FOLLOWERS = ['', '\n', '\nh();', '\n\nexport type B = C;'];
+  '\n/**\n * c\n */', ' /**\n * c\n */ /**\n * d\n */', ' /* c */\n/* d */', ''];
+const FOLLOWERS = ['', '\n', '\nh();', '\n\nexport type B = C;', '\n  ;'];
 const BODIES = ['S', 'function g() { S }', 'function g() {\n  S\n}', 'if (a) {\n  S\n}'];
+
+// Class member modifiers before a member with a Flow type, on the same line
+// or the next: the member must read as flow-parser reads it.
+const CLASS_MODIFIERS = ['declare', 'override', 'readonly', '+', '-', 'private', 'protected', 'public', 'static',
+  'async', 'get', 'set', 'declare static', 'static readonly', 'static async', 'static +', 'override readonly'];
+const TYPED_MEMBERS = ['b: T', 'b?: T', 'b: T = 1', 'b(): T {}', 'b<T>(): T {}', '[b]: T', '#b: T', 'b(c: T) {}'];
+
+function members() {
+  const out = new Set();
+  for (const modifier of CLASS_MODIFIERS) {
+    for (const member of TYPED_MEMBERS) {
+      for (const sep of [' ', '\n  ']) {
+        out.add(`class K { ${modifier}${sep}${member} }`);
+        out.add(`class K {\n  ${modifier}${sep}${member}\n  c: T;\n}`);
+      }
+    }
+  }
+  for (const member of TYPED_MEMBERS) {
+    for (const sep of [' ', '\n  ']) out.add(`abstract class K { abstract${sep}${member.replace(' {}', '')} }`);
+  }
+  return [...out];
+}
 
 function declarations() {
   const out = new Set();
@@ -231,6 +254,7 @@ function snippets() {
     for (const start of STARTS) add(context, start);
   }
   for (const d of declarations()) out.add(d);
+  for (const m of members()) out.add(m);
   return [...out];
 }
 
@@ -245,7 +269,7 @@ function flowAst(source) {
 
 // What each reading of `<` produces, counted in both trees.
 function emptyShape() {
-  return {typeArgumentCalls: 0, comparisons: 0, arrows: 0, jsx: 0, casts: 0};
+  return {typeArgumentCalls: 0, comparisons: 0, arrows: 0, jsx: 0, casts: 0, classFields: 0, classMethods: 0};
 }
 
 function flowShape(node, shape = emptyShape()) {
@@ -272,6 +296,16 @@ function flowShape(node, shape = emptyShape()) {
       break;
     case 'TypeCastExpression':
       shape.casts++;
+      break;
+    case 'PropertyDefinition':
+    case 'ClassProperty':
+    case 'ClassPrivateProperty':
+    case 'AbstractPropertyDefinition':
+      shape.classFields++;
+      break;
+    case 'MethodDefinition':
+    case 'AbstractMethodDefinition':
+      shape.classMethods++;
       break;
   }
   for (const [key, value] of Object.entries(node)) {
@@ -300,6 +334,14 @@ function treeShape(node, shape = emptyShape()) {
       break;
     case 'type_cast_expression':
       shape.casts++;
+      break;
+    case 'field_definition':
+    case 'abstract_property_definition':
+      shape.classFields++;
+      break;
+    case 'method_definition':
+    case 'abstract_method_definition':
+      if (node.parent?.type === 'class_body') shape.classMethods++;
       break;
   }
   for (const child of node.namedChildren) treeShape(child, shape);

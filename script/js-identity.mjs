@@ -182,11 +182,38 @@ const COMMENTED = [
 ];
 const COMMENT_EXPRESSIONS = ['a', 'f()', 'a.b', '(a)', '[a]', '`t`', 'a => a'];
 const COMMENTS = [' // c', '  // c', ' /* c */', '/* c */', ' /**\n * c\n */', ' /* c */ /* d */', '\n// c',
-  '\n/**\n * c\n */', '  // c\n/**\n * x\n */'];
+  '\n/**\n * c\n */', '  // c\n/**\n * x\n */', ' /**\n * c\n */ /**\n * d\n */', ' /* c */\n/* d */',
+  ' /* c\n */ /* d */ /* e */', ' // c\n/* d */ /* e */'];
 const FOLLOWERS = ['', '\n', '\nh();', '\n\nvar z = 1;'];
+
+// Class member modifiers, alone on their line or not, before every kind of
+// member; and the same words in object literals.
+const MODIFIERS = ['static', 'async', 'get', 'set', 'accessor', 'static async', 'static get', 'static set',
+  'static accessor', 'static\n  async', 'static\n  get', 'declare', 'override', 'readonly', 'abstract', 'private'];
+const MEMBERS = ['b() {}', '*b() {}', 'b = 1', 'b', '[b]() {}', '[b] = 1', '#b() {}', '#b = 1', "'b'() {}", '1() {}',
+  'get b() {}', 'async b() {}', 'static b() {}', 'in() {}', '= 1', '() {}'];
+const MEMBER_BODIES = ['class K { M\n  B }', 'class K { M B }', 'class K {\n  M\n  B\n}', 'class K { M\n  B; c() {} }',
+  'x = { M\n  B };', 'x = { M B };'];
+
+// A `;` after a comment and a line break.
+const SEMICOLON_STATEMENTS = ['let a', 'var a = 1', 'var a = 1\n    , b', 'const a = 1', 'x = a', 'f()', 'a++',
+  'for (;;) {\n  break S\n}', 'for (;;) {\n  continue S\n}', 'function g() {\n  return S\n}',
+  'function g() {\n  return a S\n}', 'function g() {\n  throw a S\n}', 'do {} while (a)', 'debugger'];
+const SEMICOLON_COMMENTS = [' // c\n  ;', ' /* c */\n;', ' /* c\n  d */;', ' /* c */ // d\n  ;', ' // c\n\n;',
+  ' /* c */;', ';'];
 
 function generated() {
   const out = new Set();
+  for (const body of MEMBER_BODIES) {
+    for (const modifier of MODIFIERS) {
+      for (const member of MEMBERS) out.add(body.replace('M', modifier).replace('B', member));
+    }
+  }
+  for (const statement of SEMICOLON_STATEMENTS) {
+    for (const comment of SEMICOLON_COMMENTS) {
+      out.add(statement.includes('S') ? statement.replace('S', comment) : statement + comment);
+    }
+  }
   for (const statement of STATEMENTS) {
     for (const expression of EXPRESSIONS) out.add(statement.replaceAll('E', expression));
   }
